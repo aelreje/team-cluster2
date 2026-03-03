@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/api";
 import DashboardSidebar from "../components/DashboardSidebar";
 import useLiveDateTime from "../hooks/useLiveDateTime";
@@ -66,7 +65,10 @@ const formatShiftRange = schedule => {
 };
 
 export default function CoachAttendancePage() {
-  const navigate = useNavigate();
+  const navigate = useCallback(path => {
+    window.history.pushState({}, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, []);
   const { user } = useCurrentUser();
   const dateTimeLabel = useLiveDateTime();
   const navItems = [
