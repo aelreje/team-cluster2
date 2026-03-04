@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { apiFetch } from "../api/api";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -20,10 +19,18 @@ export default function Register() {
     setError("");
 
     try {
-      await apiFetch("auth/register.php", {
-        method: "POST",
-        body: JSON.stringify(form)
-      });
+      const res = await fetch(
+        "http://localhost/team-cluster/backend/auth/register.php",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) throw data;
 
       window.location.href = "/login";
     } catch (err) {

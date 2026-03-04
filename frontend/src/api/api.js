@@ -1,14 +1,12 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL
-  || `${window.location.protocol}//${window.location.hostname}/team-cluster/backend`;
+const BASE_URL = "http://localhost/team-cluster/backend";
 
 function buildEndpointUrl(endpoint, method) {
   if ((method ?? "GET").toUpperCase() !== "GET") {
-    return `${API_BASE_URL}/${endpoint}`;
+    return `${BASE_URL}/${endpoint}`;
   }
 
   const separator = endpoint.includes("?") ? "&" : "?";
-  rreturn `${API_BASE_URL}/${endpoint}${separator}_ts=${Date.now()}`;
+  return `${BASE_URL}/${endpoint}${separator}_ts=${Date.now()}`;
 }
 
 export async function apiFetch(endpoint, options = {}) {
