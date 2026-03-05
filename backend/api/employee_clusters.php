@@ -238,10 +238,20 @@ while ($row = $clusterRes->fetch_assoc()) {
         }
     } elseif ($hasNewAttendance) {
         $timeLogColumns = getColumns($conn, 'time_logs');
-        $hasTimeLogs = in_array('attendance_id', $timeLogColumns, true)
-            && in_array('time_in', $timeLogColumns, true)
-            && in_array('time_out', $timeLogColumns, true)
-            && in_array('time_log_id', $timeLogColumns, true);
+        $timeLogPrimaryKey = in_array('time_log_id', $timeLogColumns, true)
+            ? 'time_log_id'
+            : (in_array('id', $timeLogColumns, true) ? 'id' : null);
+        $timeLogOrderColumn = $timeLogPrimaryKey
+            ?? (in_array('updated_at', $timeLogColumns, true)
+                ? 'updated_at'
+                : (in_array('time_in', $timeLogColumns, true) ? 'time_in' : null));
+
+        $hasTimeLogs = $timeLogPrimaryKey
+            && in_array('attendance_id', $timeLogColumns, true)
+            && in_array('time_in', $timeLogColumns, true);
+
+        $hasTimeOut = in_array('time_out', $timeLogColumns, true);
+        $hasTimeTag = in_array('tag', $timeLogColumns, true);
 
         $attendanceSql = "SELECT al.attendance_status,
                                  al.note,
@@ -249,8 +259,8 @@ while ($row = $clusterRes->fetch_assoc()) {
 
         if ($hasTimeLogs) {
             $attendanceSql .= ", tl.time_in AS latest_time_in,
-                                tl.time_out AS latest_time_out,
-                                tl.tag AS latest_time_tag";
+                                " . ($hasTimeOut ? "tl.time_out" : "NULL") . " AS latest_time_out,
+                                " . ($hasTimeTag ? "tl.tag" : "NULL") . " AS latest_time_tag";
         }
 
         $attendanceSql .= "
@@ -259,11 +269,11 @@ while ($row = $clusterRes->fetch_assoc()) {
         if ($hasTimeLogs) {
             $attendanceSql .= "
              LEFT JOIN time_logs tl
-               ON tl.time_log_id = (
-                   SELECT t2.time_log_id
+               ON tl.$timeLogPrimaryKey = (
+                   SELECT t2.$timeLogPrimaryKey
                    FROM time_logs t2
                    WHERE t2.attendance_id = al.attendance_id
-                   ORDER BY t2.time_log_id DESC
+                   " . ($timeLogOrderColumn ? "ORDER BY t2.$timeLogOrderColumn DESC" : "") . "
                    LIMIT 1
                )";
         }

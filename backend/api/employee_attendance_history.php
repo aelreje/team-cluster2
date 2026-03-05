@@ -76,10 +76,20 @@ $hasNewAttendance = in_array('attendance_id', $attendanceColumns, true)
     && in_array('attendance_status', $attendanceColumns, true)
     && in_array('attendance_date', $attendanceColumns, true);
 
-$hasTimeLogs = in_array('attendance_id', $timeLogColumns, true)
-    && in_array('time_in', $timeLogColumns, true)
-    && in_array('time_out', $timeLogColumns, true)
-    && in_array('time_log_id', $timeLogColumns, true);
+$timeLogPrimaryKey = in_array('time_log_id', $timeLogColumns, true)
+    ? 'time_log_id'
+    : (in_array('id', $timeLogColumns, true) ? 'id' : null);
+$timeLogOrderColumn = $timeLogPrimaryKey
+    ?? (in_array('updated_at', $timeLogColumns, true)
+        ? 'updated_at'
+        : (in_array('time_in', $timeLogColumns, true) ? 'time_in' : null));
+
+$hasTimeLogs = $timeLogPrimaryKey
+    && in_array('attendance_id', $timeLogColumns, true)
+    && in_array('time_in', $timeLogColumns, true);
+
+$hasTimeOut = in_array('time_out', $timeLogColumns, true);
+$hasTimeTag = in_array('tag', $timeLogColumns, true);
 
 $out = [];
 if ($hasLegacyAttendance) {
@@ -114,8 +124,8 @@ if ($hasLegacyAttendance) {
     if ($hasTimeLogs) {
         $sql .= "
             tl.time_in AS time_in_at,
-            tl.time_out AS time_out_at,
-            COALESCE(tl.tag, al.attendance_status) AS tag,";
+            " . ($hasTimeOut ? "tl.time_out" : "NULL") . " AS time_out_at,
+            " . ($hasTimeTag ? "COALESCE(tl.tag, al.attendance_status)" : "al.attendance_status") . " AS tag,";
     } else {
         $sql .= "
             NULL AS time_in_at,
@@ -132,11 +142,11 @@ if ($hasLegacyAttendance) {
     if ($hasTimeLogs) {
         $sql .= "
          LEFT JOIN time_logs tl
-           ON tl.time_log_id = (
-               SELECT t2.time_log_id
+           ON tl.$timeLogPrimaryKey = (
+               SELECT t2.$timeLogPrimaryKey
                FROM time_logs t2
                WHERE t2.attendance_id = al.attendance_id
-               ORDER BY t2.time_log_id DESC
+               " . ($timeLogOrderColumn ? "ORDER BY t2.$timeLogOrderColumn DESC" : "") . "
                LIMIT 1
            )";
     }
