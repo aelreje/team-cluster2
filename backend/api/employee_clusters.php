@@ -237,23 +237,63 @@ while ($row = $clusterRes->fetch_assoc()) {
             $entry['attendance_note'] = $attendance['note'];
         }
     } elseif ($hasNewAttendance) {
-        $attendanceStmt = $conn->prepare(
-            "SELECT attendance_status, note, attendance_date
-             FROM attendance_logs
-             WHERE cluster_id = ?
-               AND employee_id = ?
-             ORDER BY COALESCE(attendance_date, updated_at) DESC, attendance_id DESC
-             LIMIT 1"
-        );
+        $timeLogColumns = getColumns($conn, 'time_logs');
+        $timeLogPrimaryKey = in_array('time_log_id', $timeLogColumns, true)
+            ? 'time_log_id'
+            : (in_array('id', $timeLogColumns, true) ? 'id' : null);
+        $timeLogOrderColumn = $timeLogPrimaryKey
+            ?? (in_array('updated_at', $timeLogColumns, true)
+                ? 'updated_at'
+                : (in_array('time_in', $timeLogColumns, true) ? 'time_in' : null));
+
+        $hasTimeLogs = $timeLogPrimaryKey
+            && in_array('attendance_id', $timeLogColumns, true)
+            && in_array('time_in', $timeLogColumns, true);
+
+        $hasTimeOut = in_array('time_out', $timeLogColumns, true);
+        $hasTimeTag = in_array('tag', $timeLogColumns, true);
+
+        $attendanceSql = "SELECT al.attendance_status,
+                                 al.note,
+                                 al.attendance_date";
+
+        if ($hasTimeLogs) {
+            $attendanceSql .= ", tl.time_in AS latest_time_in,
+                                " . ($hasTimeOut ? "tl.time_out" : "NULL") . " AS latest_time_out,
+                                " . ($hasTimeTag ? "tl.tag" : "NULL") . " AS latest_time_tag";
+        }
+
+        $attendanceSql .= "
+             FROM attendance_logs al";
+
+        if ($hasTimeLogs) {
+            $attendanceSql .= "
+             LEFT JOIN time_logs tl
+               ON tl.$timeLogPrimaryKey = (
+                   SELECT t2.$timeLogPrimaryKey
+                   FROM time_logs t2
+                   WHERE t2.attendance_id = al.attendance_id
+                   " . ($timeLogOrderColumn ? "ORDER BY t2.$timeLogOrderColumn DESC" : "") . "
+                   LIMIT 1
+               )";
+        }
+
+        $attendanceSql .= "
+             WHERE al.cluster_id = ?
+               AND al.employee_id = ?
+             ORDER BY COALESCE(al.attendance_date, al.updated_at) DESC, al.attendance_id DESC
+             LIMIT 1";
+
+        $attendanceStmt = $conn->prepare($attendanceSql);
         $attendanceStmt->bind_param('ii', $clusterId, $memberEmployeeId);
         $attendanceStmt->execute();
         $attendanceRes = $attendanceStmt->get_result();
 
         if ($attendanceRes && $attendanceRes->num_rows > 0) {
             $attendance = $attendanceRes->fetch_assoc();
-            $entry['time_in_at'] = $attendance['attendance_date'];
-            $entry['time_out_at'] = null;
-            $entry['attendance_tag'] = $attendance['attendance_status'];
+            $entry['time_in_at'] = $attendance['latest_time_in'] ?? null;
+            $entry['time_out_at'] = $attendance['latest_time_out'] ?? null;
+            $entry['attendance_tag'] = $attendance['latest_time_tag'] ?? $attendance['attendance_status'];
             $entry['attendance_note'] = $attendance['note'];
         }
     }

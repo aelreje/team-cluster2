@@ -114,10 +114,22 @@ $hasNewAttendance = in_array('attendance_id', $attendanceColumns, true)
     && in_array('attendance_status', $attendanceColumns, true)
     && in_array('attendance_date', $attendanceColumns, true);
 
-$hasTimeLogs = in_array('time_log_id', $timeLogColumns, true)
-    && in_array('time_in', $timeLogColumns, true)
-    && in_array('time_out', $timeLogColumns, true)
-    && in_array('log_date', $timeLogColumns, true);
+$timeLogPrimaryKey = in_array('time_log_id', $timeLogColumns, true)
+    ? 'time_log_id'
+    : (in_array('id', $timeLogColumns, true) ? 'id' : null);
+$timeLogOrderColumn = $timeLogPrimaryKey
+    ?? (in_array('updated_at', $timeLogColumns, true)
+        ? 'updated_at'
+        : (in_array('time_in', $timeLogColumns, true) ? 'time_in' : null));
+
+$hasTimeLogs = in_array('attendance_id', $timeLogColumns, true)
+    && in_array('time_in', $timeLogColumns, true);
+
+$hasTimeLogTimeOut = in_array('time_out', $timeLogColumns, true);
+$hasTimeLogEmployee = in_array('employee_id', $timeLogColumns, true);
+$hasTimeLogCluster = in_array('cluster_id', $timeLogColumns, true);
+$hasTimeLogDate = in_array('log_date', $timeLogColumns, true);
+$hasTimeLogTag = in_array('tag', $timeLogColumns, true);
 
 $timeInSql = $timeInAt ? date("Y-m-d H:i:s", strtotime($timeInAt)) : null;
 $timeOutSql = $timeOutAt ? date("Y-m-d H:i:s", strtotime($timeOutAt)) : null;
@@ -197,38 +209,100 @@ if ($hasLegacyAttendance) {
     }
 
     if ($hasTimeLogs && $attendanceId > 0) {
-        $logDateEscaped = $attendanceDateEscaped;
         if ($timeOutSql) {
-            $existingTimeLogQuery = $conn->query(
-                "SELECT time_log_id
+            $existingTimeLogSql = "SELECT " . ($timeLogPrimaryKey ?? 'attendance_id') . " AS time_log_key
                  FROM time_logs
-                 WHERE cluster_id = $cluster_id
-                   AND employee_id = $employee_id
-                   AND attendance_id = $attendanceId
-                   AND time_out IS NULL
-                 ORDER BY time_log_id DESC
-                 LIMIT 1"
-            );
+                 WHERE attendance_id = $attendanceId";
+
+            if ($hasTimeLogCluster) {
+                $existingTimeLogSql .= " AND cluster_id = $cluster_id";
+            }
+            if ($hasTimeLogEmployee) {
+                $existingTimeLogSql .= " AND employee_id = $employee_id";
+            }
+            if ($hasTimeLogTimeOut) {
+                $existingTimeLogSql .= " AND time_out IS NULL";
+            }
+            if ($timeLogOrderColumn) {
+                $existingTimeLogSql .= " ORDER BY $timeLogOrderColumn DESC";
+            }
+            $existingTimeLogSql .= " LIMIT 1";
+
+            $existingTimeLogQuery = $conn->query($existingTimeLogSql);
 
             if ($existingTimeLogQuery && $existingTimeLogQuery->num_rows > 0) {
                 $existingTimeLog = $existingTimeLogQuery->fetch_assoc();
-                $timeLogId = (int)$existingTimeLog['time_log_id'];
-                $conn->query(
-                    "UPDATE time_logs
-                     SET time_out = $timeOutValue,
-                         tag = $tagValue
-                     WHERE time_log_id = $timeLogId"
-                );
+                $timeLogKey = (int)$existingTimeLog['time_log_key'];
+
+                $timeLogUpdates = [];
+                if ($hasTimeLogTimeOut) {
+                    $timeLogUpdates[] = "time_out = $timeOutValue";
+                }
+                if ($hasTimeLogTag) {
+                    $timeLogUpdates[] = "tag = $tagValue";
+                }
+
+                if (count($timeLogUpdates) > 0 && $timeLogPrimaryKey) {
+                    $conn->query(
+                        "UPDATE time_logs
+                         SET " . implode(', ', $timeLogUpdates) . "
+                         WHERE $timeLogPrimaryKey = $timeLogKey"
+                    );
+                }
             } else {
+                $insertColumns = ['attendance_id', 'time_in'];
+                $insertValues = [$attendanceId, $timeInValue];
+
+                if ($hasTimeLogEmployee) {
+                    $insertColumns[] = 'employee_id';
+                    $insertValues[] = $employee_id;
+                }
+                if ($hasTimeLogCluster) {
+                    $insertColumns[] = 'cluster_id';
+                    $insertValues[] = $cluster_id;
+                }
+                if ($hasTimeLogTimeOut) {
+                    $insertColumns[] = 'time_out';
+                    $insertValues[] = $timeOutValue;
+                }
+                if ($hasTimeLogDate) {
+                    $insertColumns[] = 'log_date';
+                    $insertValues[] = $attendanceDateEscaped;
+                }
+                if ($hasTimeLogTag) {
+                    $insertColumns[] = 'tag';
+                    $insertValues[] = $tagValue;
+                }
+
                 $conn->query(
-                    "INSERT INTO time_logs (employee_id, attendance_id, cluster_id, time_in, time_out, log_date, tag)
-                     VALUES ($employee_id, $attendanceId, $cluster_id, $timeInValue, $timeOutValue, $logDateEscaped, $tagValue)"
+                    "INSERT INTO time_logs (" . implode(', ', $insertColumns) . ")
+                     VALUES (" . implode(', ', $insertValues) . ")"
                 );
             }
         } elseif ($timeInSql) {
+            $insertColumns = ['attendance_id', 'time_in'];
+            $insertValues = [$attendanceId, $timeInValue];
+
+            if ($hasTimeLogEmployee) {
+                $insertColumns[] = 'employee_id';
+                $insertValues[] = $employee_id;
+            }
+            if ($hasTimeLogCluster) {
+                $insertColumns[] = 'cluster_id';
+                $insertValues[] = $cluster_id;
+            }
+            if ($hasTimeLogDate) {
+                $insertColumns[] = 'log_date';
+                $insertValues[] = $attendanceDateEscaped;
+            }
+            if ($hasTimeLogTag) {
+                $insertColumns[] = 'tag';
+                $insertValues[] = $tagValue;
+            }
+
             $conn->query(
-                "INSERT INTO time_logs (employee_id, attendance_id, cluster_id, time_in, log_date, tag)
-                 VALUES ($employee_id, $attendanceId, $cluster_id, $timeInValue, $logDateEscaped, $tagValue)"
+                "INSERT INTO time_logs (" . implode(', ', $insertColumns) . ")
+                 VALUES (" . implode(', ', $insertValues) . ")"
             );
         }
     }

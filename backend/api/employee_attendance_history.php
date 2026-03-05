@@ -36,6 +36,7 @@ $userColumns = getColumns($conn, 'users');
 $employeeColumns = getColumns($conn, 'employees');
 $clusterColumns = getColumns($conn, 'clusters');
 $attendanceColumns = getColumns($conn, 'attendance_logs');
+$timeLogColumns = getColumns($conn, 'time_logs');
 $clusterMemberEmployeeReference = getClusterMemberEmployeeReference($conn);
 
 $userIdColumn = in_array('id', $userColumns, true) ? 'id' : 'user_id';
@@ -75,6 +76,21 @@ $hasNewAttendance = in_array('attendance_id', $attendanceColumns, true)
     && in_array('attendance_status', $attendanceColumns, true)
     && in_array('attendance_date', $attendanceColumns, true);
 
+$timeLogPrimaryKey = in_array('time_log_id', $timeLogColumns, true)
+    ? 'time_log_id'
+    : (in_array('id', $timeLogColumns, true) ? 'id' : null);
+$timeLogOrderColumn = $timeLogPrimaryKey
+    ?? (in_array('updated_at', $timeLogColumns, true)
+        ? 'updated_at'
+        : (in_array('time_in', $timeLogColumns, true) ? 'time_in' : null));
+
+$hasTimeLogs = $timeLogPrimaryKey
+    && in_array('attendance_id', $timeLogColumns, true)
+    && in_array('time_in', $timeLogColumns, true);
+
+$hasTimeOut = in_array('time_out', $timeLogColumns, true);
+$hasTimeTag = in_array('tag', $timeLogColumns, true);
+
 $out = [];
 if ($hasLegacyAttendance) {
     $stmt = $conn->prepare(
@@ -100,21 +116,46 @@ if ($hasLegacyAttendance) {
         $out[] = $row;
     }
 } elseif ($hasNewAttendance) {
-    $stmt = $conn->prepare(
-        "SELECT
+    $sql = "SELECT
             al.attendance_id AS id,
             al.cluster_id,
-            c.name AS cluster_name,
-            al.attendance_date AS time_in_at,
+            c.name AS cluster_name,";
+
+    if ($hasTimeLogs) {
+        $sql .= "
+            tl.time_in AS time_in_at,
+            " . ($hasTimeOut ? "tl.time_out" : "NULL") . " AS time_out_at,
+            " . ($hasTimeTag ? "COALESCE(tl.tag, al.attendance_status)" : "al.attendance_status") . " AS tag,";
+    } else {
+        $sql .= "
+            NULL AS time_in_at,
             NULL AS time_out_at,
-            al.attendance_status AS tag,
+            al.attendance_status AS tag,";
+    }
+
+    $sql .= "
             al.note,
             al.updated_at
          FROM attendance_logs al
-         JOIN clusters c ON c.$clusterIdColumn = al.cluster_id
+         JOIN clusters c ON c.$clusterIdColumn = al.cluster_id";
+
+    if ($hasTimeLogs) {
+        $sql .= "
+         LEFT JOIN time_logs tl
+           ON tl.$timeLogPrimaryKey = (
+               SELECT t2.$timeLogPrimaryKey
+               FROM time_logs t2
+               WHERE t2.attendance_id = al.attendance_id
+               " . ($timeLogOrderColumn ? "ORDER BY t2.$timeLogOrderColumn DESC" : "") . "
+               LIMIT 1
+           )";
+    }
+
+    $sql .= "
          WHERE al.employee_id = ?
-         ORDER BY COALESCE(al.attendance_date, al.updated_at) DESC, al.attendance_id DESC"
-    );
+         ORDER BY COALESCE(al.attendance_date, al.updated_at) DESC, al.attendance_id DESC";
+
+    $stmt = $conn->prepare($sql);
     $stmt->bind_param('i', $memberEmployeeId);
     $stmt->execute();
     $res = $stmt->get_result();

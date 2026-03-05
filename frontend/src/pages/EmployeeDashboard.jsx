@@ -233,8 +233,18 @@ export default function EmployeeDashboard() {
 
   const parseSqlDateTime = value => {
     if (!value || typeof value !== "string") return null;
-    const [datePart, timePart] = value.trim().split(" ");
-    if (!datePart || !timePart) return new Date(value);
+    const trimmedValue = value.trim();
+    const [datePart, timePart] = trimmedValue.split(" ");
+
+    if (datePart && !timePart && /^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      const [year, month, day] = datePart.split("-").map(Number);
+      if ([year, month, day].some(Number.isNaN)) {
+        return new Date(trimmedValue);
+      }
+      return new Date(year, month - 1, day);
+    }
+
+    if (!datePart || !timePart) return new Date(trimmedValue);
 
     const [year, month, day] = datePart.split("-").map(Number);
     const [hours, minutes, seconds] = timePart.split(":").map(Number);
