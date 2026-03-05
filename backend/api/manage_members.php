@@ -49,6 +49,7 @@ function sqlTimeToUi(?string $value): array {
 $userColumns = getColumns($conn, 'users');
 $employeeColumns = getColumns($conn, 'employees');
 $attendanceColumns = getColumns($conn, 'attendance_logs');
+$timeLogColumns = getColumns($conn, 'time_logs');
 
 $userIdColumn = in_array('id', $userColumns, true) ? 'id' : 'user_id';
 $memberNameExpr = in_array('fullname', $userColumns, true)
@@ -64,6 +65,21 @@ $hasNewAttendance = in_array('attendance_id', $attendanceColumns, true)
     && in_array('attendance_status', $attendanceColumns, true)
     && in_array('attendance_date', $attendanceColumns, true);
 
+$timeLogPrimaryKey = in_array('time_log_id', $timeLogColumns, true)
+    ? 'time_log_id'
+    : (in_array('id', $timeLogColumns, true) ? 'id' : null);
+$timeLogOrderColumn = $timeLogPrimaryKey
+    ?? (in_array('updated_at', $timeLogColumns, true)
+        ? 'updated_at'
+        : (in_array('time_in', $timeLogColumns, true) ? 'time_in' : null));
+
+$hasTimeLogs = $timeLogPrimaryKey
+    && in_array('attendance_id', $timeLogColumns, true)
+    && in_array('time_in', $timeLogColumns, true);
+
+$hasTimeLogTimeOut = in_array('time_out', $timeLogColumns, true);
+$hasTimeLogTag = in_array('tag', $timeLogColumns, true);
+
 $escapedAttendanceDate = $conn->real_escape_string($attendance_date);
 
 $attendanceJoin = 'NULL AS attendance_tag, NULL AS attendance_note, NULL AS time_in_at, NULL AS time_out_at';
@@ -73,10 +89,10 @@ if ($hasLegacyAttendance) {
             al.time_in_at,
             al.time_out_at";
 } elseif ($hasNewAttendance) {
-    $attendanceJoin = "al.attendance_status AS attendance_tag,
+    $attendanceJoin = "" . ($hasTimeLogs ? ($hasTimeLogTag ? 'COALESCE(tl.tag, al.attendance_status)' : 'al.attendance_status') : 'al.attendance_status') . " AS attendance_tag,
             al.note AS attendance_note,
-            NULL AS time_in_at,
-            NULL AS time_out_at";
+            " . ($hasTimeLogs ? 'tl.time_in' : 'NULL') . " AS time_in_at,
+            " . ($hasTimeLogs && $hasTimeLogTimeOut ? 'tl.time_out' : 'NULL') . " AS time_out_at";
 }
 
 $attendanceLeftJoin = '';
@@ -102,6 +118,18 @@ if ($hasLegacyAttendance) {
             ORDER BY al2.updated_at DESC, al2.attendance_id DESC
             LIMIT 1
         )";
+
+    if ($hasTimeLogs) {
+        $attendanceLeftJoin .= "
+        LEFT JOIN time_logs tl
+          ON tl.$timeLogPrimaryKey = (
+              SELECT t2.$timeLogPrimaryKey
+              FROM time_logs t2
+              WHERE t2.attendance_id = al.attendance_id
+              " . ($timeLogOrderColumn ? "ORDER BY t2.$timeLogOrderColumn DESC" : "") . "
+              LIMIT 1
+          )";
+    }
 }
 
 $userJoin = in_array('user_id', $employeeColumns, true)
@@ -250,18 +278,40 @@ if ($hasLegacyAttendance) {
         }
     }
 } elseif ($hasNewAttendance) {
-    $historyRes = $conn->query(
-        "SELECT attendance_id,
-                employee_id,
-                DATE_FORMAT(COALESCE(attendance_date, updated_at), '%Y-%m') AS month_key,
-                DATE_FORMAT(COALESCE(attendance_date, updated_at), '%M %Y') AS month_label,
-                attendance_status,
-                note,
-                attendance_date
-         FROM attendance_logs
-         WHERE cluster_id=$cluster_id
-         ORDER BY COALESCE(attendance_date, updated_at) DESC, attendance_id DESC"
-    );
+    $historyTimeInSelect = $hasTimeLogs ? 'tl.time_in' : 'NULL';
+    $historyTimeOutSelect = ($hasTimeLogs && $hasTimeLogTimeOut) ? 'tl.time_out' : 'NULL';
+    $historyTagSelect = $hasTimeLogs
+        ? ($hasTimeLogTag ? 'COALESCE(tl.tag, al.attendance_status)' : 'al.attendance_status')
+        : 'al.attendance_status';
+
+    $historySql = "SELECT al.attendance_id,
+                al.employee_id,
+                DATE_FORMAT(COALESCE(al.attendance_date, al.updated_at), '%Y-%m') AS month_key,
+                DATE_FORMAT(COALESCE(al.attendance_date, al.updated_at), '%M %Y') AS month_label,
+                $historyTimeInSelect AS time_in_at,
+                $historyTimeOutSelect AS time_out_at,
+                $historyTagSelect AS attendance_status,
+                al.note,
+                al.attendance_date
+         FROM attendance_logs al";
+
+    if ($hasTimeLogs) {
+        $historySql .= "
+         LEFT JOIN time_logs tl
+           ON tl.$timeLogPrimaryKey = (
+               SELECT t2.$timeLogPrimaryKey
+               FROM time_logs t2
+               WHERE t2.attendance_id = al.attendance_id
+               " . ($timeLogOrderColumn ? "ORDER BY t2.$timeLogOrderColumn DESC" : "") . "
+               LIMIT 1
+           )";
+    }
+
+    $historySql .= "
+         WHERE al.cluster_id=$cluster_id
+         ORDER BY COALESCE(al.attendance_date, al.updated_at) DESC, al.attendance_id DESC";
+
+    $historyRes = $conn->query($historySql);
 
     if ($historyRes) {
         while ($history = $historyRes->fetch_assoc()) {
@@ -276,8 +326,8 @@ if ($hasLegacyAttendance) {
 
             $historyByEmployee[$employeeId][$monthKey]['entries'][] = [
                 'id' => (int)$history['attendance_id'],
-                'time_in_at' => $history['attendance_date'],
-                'time_out_at' => null,
+                'time_in_at' => $history['time_in_at'] ?: $history['attendance_date'],
+                'time_out_at' => $history['time_out_at'],
                 'tag' => $history['attendance_status'],
                 'note' => $history['note']
             ];
