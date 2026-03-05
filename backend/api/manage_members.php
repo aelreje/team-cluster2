@@ -10,7 +10,6 @@ if ($cluster_id <= 0) {
 }
 
 $attendance_date = isset($_GET['attendance_date']) ? trim($_GET['attendance_date']) : date('Y-m-d');
-
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $attendance_date)) {
     $attendance_date = date('Y-m-d');
 }
@@ -26,17 +25,35 @@ function getColumns(mysqli $conn, string $table): array {
     return $columns;
 }
 
+function sqlTimeToUi(?string $value): array {
+    if (!$value) return ['9:00', 'AM'];
+
+    $date = date_create($value);
+    if (!$date) {
+        $parts = explode(':', $value);
+        if (count($parts) < 2) return ['9:00', 'AM'];
+        $hour24 = (int)$parts[0];
+        $minute = (int)$parts[1];
+    } else {
+        $hour24 = (int)$date->format('G');
+        $minute = (int)$date->format('i');
+    }
+
+    $period = $hour24 >= 12 ? 'PM' : 'AM';
+    $hour12 = $hour24 % 12;
+    if ($hour12 === 0) $hour12 = 12;
+
+    return [sprintf('%d:%02d', $hour12, $minute), $period];
+}
+
 $userColumns = getColumns($conn, 'users');
 $employeeColumns = getColumns($conn, 'employees');
-$scheduleColumns = getColumns($conn, 'schedules');
 $attendanceColumns = getColumns($conn, 'attendance_logs');
 
 $userIdColumn = in_array('id', $userColumns, true) ? 'id' : 'user_id';
 $memberNameExpr = in_array('fullname', $userColumns, true)
     ? 'u.fullname'
     : "TRIM(CONCAT_WS(' ', e.first_name, e.middle_name, e.last_name))";
-
-$scheduleSelect = in_array('schedule', $scheduleColumns, true) ? 's.schedule' : 'NULL';
 
 $hasLegacyAttendance = in_array('id', $attendanceColumns, true)
     && in_array('time_in_at', $attendanceColumns, true)
@@ -94,14 +111,10 @@ $userJoin = in_array('user_id', $employeeColumns, true)
 $res = $conn->query(
     "SELECT u.$userIdColumn AS id,
             $memberNameExpr AS fullname,
-            $scheduleSelect AS schedule,
             $attendanceJoin
      FROM cluster_members cm
      JOIN users u ON cm.employee_id = u.$userIdColumn
      $userJoin
-     LEFT JOIN schedules s
-        ON s.cluster_id = cm.cluster_id
-        AND s.employee_id = cm.employee_id
      $attendanceLeftJoin
      WHERE cm.cluster_id=$cluster_id"
 );
@@ -113,13 +126,91 @@ if (!$res) {
 
 $members = [];
 while ($m = $res->fetch_assoc()) {
-    $m['id'] = (int)$m['id'];
+    $id = (int)$m['id'];
+    $m['id'] = $id;
     $m['fullname'] = trim((string)$m['fullname']);
     if ($m['fullname'] === '') {
-        $m['fullname'] = "Employee #{$m['id']}";
+        $m['fullname'] = "Employee #{$id}";
     }
     $m['attendance_history'] = [];
-    $members[] = $m;
+    $m['schedule'] = null;
+    $members[$id] = $m;
+}
+
+$scheduleRes = $conn->query(
+    "SELECT employee_id,
+            day_of_week,
+            shift_type,
+            start_time,
+            end_time,
+            work_setup,
+            breaksched_start,
+            breaksched_end
+     FROM schedules
+     WHERE cluster_id=$cluster_id
+     ORDER BY schedule_id ASC"
+);
+
+$dayToShort = [
+    'Monday' => 'Mon',
+    'Tuesday' => 'Tue',
+    'Wednesday' => 'Wed',
+    'Thursday' => 'Thu',
+    'Friday' => 'Fri',
+    'Saturday' => 'Sat',
+    'Sunday' => 'Sun'
+];
+
+$shiftToUi = [
+    'Morning' => 'Morning Shift',
+    'Mid' => 'Mid Shift',
+    'Night' => 'Night Shift'
+];
+
+$workSetupToUi = [
+    'Onsite' => 'Onsite',
+    'WFH' => 'Work From Home (WFH)',
+    'Hybrid' => 'Hybrid'
+];
+
+$schedulesByEmployee = [];
+if ($scheduleRes) {
+    while ($row = $scheduleRes->fetch_assoc()) {
+        $employeeId = (int)$row['employee_id'];
+        if (!isset($members[$employeeId])) continue;
+
+        $shortDay = $dayToShort[$row['day_of_week'] ?? ''] ?? null;
+        if ($shortDay === null) continue;
+
+        if (!isset($schedulesByEmployee[$employeeId])) {
+            $schedulesByEmployee[$employeeId] = [
+                'days' => [],
+                'daySchedules' => []
+            ];
+        }
+
+        [$startTime, $startPeriod] = sqlTimeToUi($row['start_time'] ?? null);
+        [$endTime, $endPeriod] = sqlTimeToUi($row['end_time'] ?? null);
+        [$breakStartTime, $breakStartPeriod] = sqlTimeToUi($row['breaksched_start'] ?? null);
+        [$breakEndTime, $breakEndPeriod] = sqlTimeToUi($row['breaksched_end'] ?? null);
+
+        if (!in_array($shortDay, $schedulesByEmployee[$employeeId]['days'], true)) {
+            $schedulesByEmployee[$employeeId]['days'][] = $shortDay;
+        }
+
+        $schedulesByEmployee[$employeeId]['daySchedules'][$shortDay] = [
+            'shiftType' => $shiftToUi[$row['shift_type'] ?? ''] ?? 'Morning Shift',
+            'startTime' => $startTime,
+            'startPeriod' => $startPeriod,
+            'endTime' => $endTime,
+            'endPeriod' => $endPeriod,
+            'workSetup' => $workSetupToUi[$row['work_setup'] ?? ''] ?? 'Onsite',
+            'breakStartTime' => $breakStartTime,
+            'breakStartPeriod' => $breakStartPeriod,
+            'breakEndTime' => $breakEndTime,
+            'breakEndPeriod' => $breakEndPeriod
+        ];
+    }
 }
 
 $historyByEmployee = [];
@@ -149,7 +240,7 @@ if ($hasLegacyAttendance) {
                 ];
             }
 
-    $historyByEmployee[$employeeId][$monthKey]['entries'][] = [
+            $historyByEmployee[$employeeId][$monthKey]['entries'][] = [
                 'id' => (int)$history['id'],
                 'time_in_at' => $history['time_in_at'],
                 'time_out_at' => $history['time_out_at'],
@@ -194,12 +285,14 @@ if ($hasLegacyAttendance) {
     }
 }
 
-foreach ($members as &$member) {
-    $memberId = (int)$member['id'];
-    if (isset($historyByEmployee[$memberId])) {
-        $member['attendance_history'] = array_values($historyByEmployee[$memberId]);
+foreach ($members as $id => &$member) {
+    if (isset($schedulesByEmployee[$id])) {
+        $member['schedule'] = $schedulesByEmployee[$id];
+    }
+    if (isset($historyByEmployee[$id])) {
+        $member['attendance_history'] = array_values($historyByEmployee[$id]);
     }
 }
 unset($member);
 
-echo json_encode($members);
+echo json_encode(array_values($members));

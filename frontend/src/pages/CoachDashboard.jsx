@@ -15,10 +15,6 @@ export default function CoachDashboard() {
     endTime: "5:00",
     endPeriod: "PM",
     workSetup: "Onsite",
-    lunchBreakStartTime: "12:00",
-    lunchBreakStartPeriod: "PM",
-    lunchBreakEndTime: "12:30",
-    lunchBreakEndPeriod: "PM",
     breakStartTime: "3:00",
     breakStartPeriod: "PM",
     breakEndTime: "3:30",
@@ -98,10 +94,6 @@ export default function CoachDashboard() {
         endTime: baseSchedule.endTime ?? "6:00",
         endPeriod: baseSchedule.endPeriod ?? "PM",
         workSetup: baseSchedule.workSetup ?? baseSchedule.work_setup ?? "Onsite",
-        lunchBreakStartTime: baseSchedule.lunchBreakStartTime ?? baseSchedule.lunchBreakTime ?? "12:00",
-        lunchBreakStartPeriod: baseSchedule.lunchBreakStartPeriod ?? baseSchedule.lunchBreakPeriod ?? "PM",
-        lunchBreakEndTime: baseSchedule.lunchBreakEndTime ?? "1:00",
-        lunchBreakEndPeriod: baseSchedule.lunchBreakEndPeriod ?? "PM",
         breakStartTime: baseSchedule.breakStartTime ?? baseSchedule.breakTime ?? "3:00",
         breakStartPeriod: baseSchedule.breakStartPeriod ?? baseSchedule.breakPeriod ?? "PM",
         breakEndTime: baseSchedule.breakEndTime ?? "3:30",
@@ -124,12 +116,6 @@ export default function CoachDashboard() {
           endTime: value.endTime ?? daySchedules[day].endTime,
           endPeriod: value.endPeriod ?? daySchedules[day].endPeriod,
           workSetup: value.workSetup ?? value.work_setup ?? daySchedules[day].workSetup,
-          lunchBreakStartTime:
-            value.lunchBreakStartTime ?? value.lunchBreakTime ?? daySchedules[day].lunchBreakStartTime,
-          lunchBreakStartPeriod:
-            value.lunchBreakStartPeriod ?? value.lunchBreakPeriod ?? daySchedules[day].lunchBreakStartPeriod,
-          lunchBreakEndTime: value.lunchBreakEndTime ?? daySchedules[day].lunchBreakEndTime,
-          lunchBreakEndPeriod: value.lunchBreakEndPeriod ?? daySchedules[day].lunchBreakEndPeriod,
           breakStartTime: value.breakStartTime ?? value.breakTime ?? daySchedules[day].breakStartTime,
           breakStartPeriod: value.breakStartPeriod ?? value.breakPeriod ?? daySchedules[day].breakStartPeriod,
           breakEndTime: value.breakEndTime ?? daySchedules[day].breakEndTime,
@@ -323,18 +309,6 @@ export default function CoachDashboard() {
       )
     ) {
       return { label: "Not available", className: "status-not-available" };
-    }
-
-    if (
-      isTimeWithinRange(
-        nowMinutes,
-        daySchedule.lunchBreakStartTime,
-        daySchedule.lunchBreakStartPeriod,
-        daySchedule.lunchBreakEndTime,
-        daySchedule.lunchBreakEndPeriod
-      )
-    ) {
-      return { label: "On lunch break", className: "status-lunch" };
     }
 
     if (
@@ -629,22 +603,11 @@ useEffect(() => {
       const baseDaySchedule = prev.daySchedules?.[day] ?? { ...defaultDaySchedule };
       const currentDaySchedule = { ...baseDaySchedule };
 
-      if (["endTime", "lunchBreakStart", "lunchBreakEnd", "breakStart", "breakEnd"].includes(field)) {
-        const [time, period] = String(value).split("|");
+      if (["endTime", "breakStart", "breakEnd"].includes(field)) {
 
         if (field === "endTime") {
           currentDaySchedule.endTime = time ?? baseDaySchedule.endTime;
           currentDaySchedule.endPeriod = period ?? baseDaySchedule.endPeriod;
-        }
-
-        if (field === "lunchBreakStart") {
-          currentDaySchedule.lunchBreakStartTime = time ?? baseDaySchedule.lunchBreakStartTime;
-          currentDaySchedule.lunchBreakStartPeriod = period ?? baseDaySchedule.lunchBreakStartPeriod;
-        }
-
-        if (field === "lunchBreakEnd") {
-          currentDaySchedule.lunchBreakEndTime = time ?? baseDaySchedule.lunchBreakEndTime;
-          currentDaySchedule.lunchBreakEndPeriod = period ?? baseDaySchedule.lunchBreakEndPeriod;
         }
 
         if (field === "breakStart") {
@@ -681,32 +644,6 @@ useEffect(() => {
         currentDaySchedule.endTime,
         currentDaySchedule.endPeriod
       );
-
-      const hasLunchStart = shiftRangeOptions.some(
-        option =>
-          option.time === currentDaySchedule.lunchBreakStartTime &&
-          option.period === currentDaySchedule.lunchBreakStartPeriod
-      );
-      if (!hasLunchStart && shiftRangeOptions.length > 0) {
-        currentDaySchedule.lunchBreakStartTime = shiftRangeOptions[0].time;
-        currentDaySchedule.lunchBreakStartPeriod = shiftRangeOptions[0].period;
-      }
-
-      const lunchEndOptions = getTimeOptionsWithinRange(
-        currentDaySchedule.lunchBreakStartTime,
-        currentDaySchedule.lunchBreakStartPeriod,
-        currentDaySchedule.endTime,
-        currentDaySchedule.endPeriod
-      );
-      const hasLunchEnd = lunchEndOptions.some(
-        option =>
-          option.time === currentDaySchedule.lunchBreakEndTime &&
-          option.period === currentDaySchedule.lunchBreakEndPeriod
-      );
-      if (!hasLunchEnd && lunchEndOptions.length > 0) {
-        currentDaySchedule.lunchBreakEndTime = lunchEndOptions[0].time;
-        currentDaySchedule.lunchBreakEndPeriod = lunchEndOptions[0].period;
-      }
 
       const hasBreakStart = shiftRangeOptions.some(
         option =>
@@ -805,12 +742,6 @@ useEffect(() => {
 
       return {
         shift: formatTimeRange(daySchedule),
-        lunchBreak: formatBreakTimeRange(
-          daySchedule.lunchBreakStartTime,
-          daySchedule.lunchBreakStartPeriod,
-          daySchedule.lunchBreakEndTime,
-          daySchedule.lunchBreakEndPeriod
-        ),
         breakTime: formatBreakTimeRange(
           daySchedule.breakStartTime,
           daySchedule.breakStartPeriod,
@@ -822,7 +753,7 @@ useEffect(() => {
 
     if (Array.isArray(normalizedSchedule)) {
       return normalizedSchedule.includes(day)
-        ? { shift: "Schedule set", lunchBreak: "—", breakTime: "—" }
+        ? { shift: "Schedule set", breakTime: "—" }
         : "—";
     }
 
@@ -1186,9 +1117,6 @@ useEffect(() => {
                           return (
                             <div key={`${member.id}-${day}`} role="cell" className="active-day-cell">
                               <div>{dayInfo.shift}</div>
-                              <span className="active-day-tag lunch-tag">
-                                Lunch break: {dayInfo.lunchBreak}
-                              </span>
                               <span className="active-day-tag break-tag">
                                 Break time: {dayInfo.breakTime}
                               </span>
@@ -1398,7 +1326,7 @@ useEffect(() => {
                   <div className="schedule-heading">
                     <div className="schedule-label">Schedule Details</div>
                     <p className="schedule-helper-text">
-                      Turn days on or off, then update the work shift, lunch, and break windows.
+                      Turn days on or off, then update the work shift and break windows.
                     </p>
                   </div>
                   <div className="schedule-day-grid">
@@ -1412,12 +1340,6 @@ useEffect(() => {
                       const shiftRangeOptions = getTimeOptionsWithinRange(
                         daySchedule.startTime,
                         daySchedule.startPeriod,
-                        daySchedule.endTime,
-                        daySchedule.endPeriod
-                      );
-                      const lunchBreakEndOptions = getTimeOptionsWithinRange(
-                        daySchedule.lunchBreakStartTime,
-                        daySchedule.lunchBreakStartPeriod,
                         daySchedule.endTime,
                         daySchedule.endPeriod
                       );
@@ -1453,8 +1375,6 @@ useEffect(() => {
                               <div className="schedule-time-label">End time</div>
                               <div className="schedule-time-label">Shift type</div>
                               <div className="schedule-time-label">Work setup</div>
-                              <div className="schedule-time-label-g1">Lunch break start</div>
-                              <div className="schedule-time-label">Lunch break end</div>
                               <div className="schedule-time-label-g2">Break time start</div>
                               <div className="schedule-time-label">Break time end</div>
 
@@ -1525,44 +1445,6 @@ useEffect(() => {
                                   {workSetupOptions.map(option => (
                                     <option key={`${day}-work-setup-${option}`} value={option}>
                                       {option}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              
-                              <div className="schedule-time-row-g1">
-                                <select
-                                  className="schedule-break-select"
-                                  value={`${daySchedule.lunchBreakStartTime}|${daySchedule.lunchBreakStartPeriod}`}
-                                  onChange={event =>
-                                    handleChangeDayTime(day, "lunchBreakStart", event.target.value)
-                                  }
-                                >
-                                  {shiftRangeOptions.map(option => (
-                                    <option
-                                      key={`${day}-lunch-start-${option.time}-${option.period}`}
-                                      value={`${option.time}|${option.period}`}
-                                    >
-                                      {option.time} {option.period}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              <div className="schedule-time-row">
-                                <select
-                                  className="schedule-break-select"
-                                  value={`${daySchedule.lunchBreakEndTime}|${daySchedule.lunchBreakEndPeriod}`}
-                                  onChange={event =>
-                                    handleChangeDayTime(day, "lunchBreakEnd", event.target.value)
-                                  }
-                                >
-                                  {lunchBreakEndOptions.map(option => (
-                                    <option
-                                      key={`${day}-lunch-end-${option.time}-${option.period}`}
-                                      value={`${option.time}|${option.period}`}
-                                    >
-                                      {option.time} {option.period}
                                     </option>
                                   ))}
                                 </select>
