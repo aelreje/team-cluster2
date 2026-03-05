@@ -40,7 +40,7 @@ $res = $conn->query(
             c.created_at,
             c.status,
             c.rejection_reason,
-            CCOALESCE($userDisplayExpr, 'Unknown') AS coach,
+            COALESCE($userDisplayExpr, 'Unknown') AS coach,
             COUNT(cm.employee_id) AS members
      FROM clusters c
      LEFT JOIN users u ON c.$ownerColumn = u.$userIdColumn
