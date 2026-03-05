@@ -15,21 +15,36 @@ if ($name === "") {
 }
 
 $coach_id = (int)$_SESSION["user"]["id"];
-$existing_cluster = $conn->query(
-    "SELECT id FROM clusters WHERE coach_id = $coach_id LIMIT 1"
-);
 
-if ($existing_cluster && $existing_cluster->num_rows > 0) {
+$columns = [];
+$columnResult = $conn->query("SHOW COLUMNS FROM clusters");
+if ($columnResult) {
+    while ($row = $columnResult->fetch_assoc()) {
+        $columns[] = $row["Field"];
+    }
+}
+
+$idColumn = in_array("id", $columns, true) ? "id" : "cluster_id";
+$ownerColumn = in_array("coach_id", $columns, true) ? "coach_id" : "user_id";
+
+$existingStmt = $conn->prepare(
+    "SELECT $idColumn FROM clusters WHERE $ownerColumn = ? LIMIT 1"
+);
+$existingStmt->bind_param("i", $coach_id);
+$existingStmt->execute();
+$existingCluster = $existingStmt->get_result();
+
+if ($existingCluster && $existingCluster->num_rows > 0) {
     http_response_code(409);
     exit(json_encode(["error" => "Only one team cluster is allowed per team coach."]));
 }
-$safe_name = $conn->real_escape_string($name);
-$safe_description = $conn->real_escape_string($description);
 
-$result = $conn->query(
-    "INSERT INTO clusters (name, description, coach_id, status, created_at)
-     VALUES ('$safe_name', '$safe_description', $coach_id, 'pending', NOW())"
+$insertStmt = $conn->prepare(
+    "INSERT INTO clusters (name, description, $ownerColumn, status, created_at)
+     VALUES (?, ?, ?, 'pending', NOW())"
 );
+$insertStmt->bind_param("ssi", $name, $description, $coach_id);
+$result = $insertStmt->execute();
 
 if ($result !== true) {
     http_response_code(500);
