@@ -21,24 +21,42 @@ if ($name === "") {
     exit(json_encode(["error" => "Cluster name is required."]));
 }
 
-$safe_name = $conn->real_escape_string($name);
-$safe_description = $conn->real_escape_string($description);
+$columns = [];
+$columnResult = $conn->query("SHOW COLUMNS FROM clusters");
+if ($columnResult) {
+    while ($row = $columnResult->fetch_assoc()) {
+        $columns[] = $row["Field"];
+    }
+}
 
-$res = $conn->query(
+$idColumn = in_array("id", $columns, true) ? "id" : "cluster_id";
+$ownerColumn = in_array("coach_id", $columns, true) ? "coach_id" : "user_id";
+
+$stmt = $conn->prepare(
     "UPDATE clusters
-     SET name='$safe_name',
-         description='$safe_description',
-         status='pending',
-         rejection_reason=NULL
-     WHERE id=$cluster_id AND coach_id=$coach_id AND status='rejected'"
+     SET name = ?,
+         description = ?,
+         status = 'pending',
+         rejection_reason = NULL
+     WHERE $idColumn = ?
+       AND $ownerColumn = ?
+       AND LOWER(status) = 'rejected'"
 );
+
+if (!$stmt) {
+    http_response_code(500);
+    exit(json_encode(["error" => "Failed to resubmit cluster."]));
+}
+
+$stmt->bind_param("ssii", $name, $description, $cluster_id, $coach_id);
+$res = $stmt->execute();
 
 if ($res !== true) {
     http_response_code(500);
     exit(json_encode(["error" => "Failed to resubmit cluster."]));
 }
 
-if ($conn->affected_rows === 0) {
+if ($stmt->affected_rows === 0) {
     http_response_code(404);
     exit(json_encode(["error" => "Rejected cluster not found."]));
 }
