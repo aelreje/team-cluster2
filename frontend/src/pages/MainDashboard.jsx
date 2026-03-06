@@ -64,18 +64,6 @@ function AnnouncementCard() {
   );
 }
 
-function BreakCard() {
-  return (
-    <div className="card break-card">
-      <div className="card-top compact">
-        <span>Break</span>
-        <span className="toggle-wrap">Auto-Stop <span className="toggle-dot">●</span></span>
-      </div>
-      <button type="button" className="start-btn">Start</button>
-    </div>
-  );
-}
-
 function ShiftCard() {
   return (
     <div className="card shift-card">
@@ -262,7 +250,6 @@ export default function MainDashboard({ attendanceControls = null }) {
           canToggleTimeIn={canToggleTimeIn}
         />
         <AnnouncementCard />
-        <BreakCard />
         <ShiftCard />
         <CalendarCard calendarData={calendarData} />
         <HolidayCard />
@@ -275,7 +262,6 @@ export default function MainDashboard({ attendanceControls = null }) {
 
 export {
   AnnouncementCard,
-  BreakCard,
   CalendarCard,
   DashboardHeader,
   HolidayCard,

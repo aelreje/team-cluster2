@@ -1942,7 +1942,6 @@ body {
   grid-template-columns: 1.35fr 1.1fr 1.1fr;
   grid-template-areas:
     "time announcement announcement"
-    "break calendar holiday"
     "shift calendar holiday"
     "summary summary member";
   column-gap: 8px;
@@ -1965,14 +1964,13 @@ body {
 
 @media (min-width: 1201px) {
   .dashboard-grid {
-    grid-template-rows: 190px 82px 106px 112px;
+    grid-template-rows: 190px 106px 112px;
     align-items: stretch;
     align-content: start;
   }
 
   .dashboard-grid .time-card,
   .dashboard-grid .announcement-card,
-  .dashboard-grid .break-card,
   .dashboard-grid .shift-card,
   .dashboard-grid .calendar-card,
   .dashboard-grid .holiday-card,
@@ -1990,7 +1988,7 @@ body {
 
   .dashboard-grid {
     grid-template-columns: 1.35fr 1.12fr 1.12fr;
-    grid-template-rows: 236px 104px 146px 148px;
+    grid-template-rows: 236px 146px 148px;
     column-gap: 12px;
     row-gap: 12px;
   }
@@ -2016,7 +2014,7 @@ body {
 
   .dashboard-grid {
     grid-template-columns: 1.36fr 1.14fr 1.14fr;
-    grid-template-rows: 266px 116px 164px 160px;
+    grid-template-rows: 266px 164px 160px;
     column-gap: 14px;
     row-gap: 12px;
   }
@@ -2044,9 +2042,9 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
       "time announcement"
-      "break calendar"
-      "shift holiday"
-      "summary member";
+      "shift calendar"
+      "holiday member"
+      "summary summary";
     column-gap: 8px;
     row-gap: 8px;
   }
@@ -2067,7 +2065,6 @@ body {
     grid-template-areas:
       "time"
       "announcement"
-      "break"
       "shift"
       "calendar"
       "holiday"
@@ -2176,48 +2173,6 @@ body {
   color: #2f2f2f;
   z-index: 1;
 }
-
-
-/* BreakCard.css */
-.break-card {
-  grid-area: break;
-  height: 82px;
-  align-self: start;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-
-.card-top.compact {
-  font-size: 11px;
-  line-height: 1;
-}
-
-.toggle-wrap {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.toggle-dot {
-  font-size: 15px;
-}
-
-.start-btn {
-  display: block;
-  margin: 0 auto;
-  border: none;
-  border-radius: 8px;
-  width: 115px;
-  height: 30px;
-  background: #000;
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
-}
-
 
 /* CalendarCard.css */
 .calendar-card {
