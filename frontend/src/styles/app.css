@@ -1385,6 +1385,9 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: #4b5563;
+  background: #eaeaea;
+  background: linear-gradient(90deg, #e7e7e7 0%, #f8fafc 100%);
+  border-radius: 10px;
 }
 
 .schedule-panel-total {
@@ -1400,6 +1403,7 @@ body {
   font-weight: 700;
   color: #475569;
   margin-bottom: 6px;
+  
 }
 
 .schedule-time-row {
