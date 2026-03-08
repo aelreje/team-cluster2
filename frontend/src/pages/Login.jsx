@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { apiFetch } from "../api/api";
 import AuthLayout from "../components/AuthLayout";
-import { demoAccounts, loginHighlights } from "../utils/authContent";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -44,16 +43,10 @@ export default function Login() {
 
   return (
     <AuthLayout
+      showPanel={false}
       title="Welcome back"
       description="Access your dashboard and keep your team aligned in real time."
-      highlights={loginHighlights}
-      supportContent={(
-        <ul className="auth-list">
-          {demoAccounts.map(account => (
-            <li key={account}>{account}</li>
-          ))}
-        </ul>
-      )}
+      highlights={[]}
     >
       <form className="auth-card" onSubmit={handleSubmit}>
         <div>

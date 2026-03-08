@@ -1479,6 +1479,12 @@ body {
   align-items: stretch;
 }
 
+
+.auth-shell-single {
+  width: min(460px, 100%);
+  grid-template-columns: 1fr;
+  justify-items: stretch;
+}
 .auth-panel {
   background: var(--panel-gradient);
   color: #f9fafb;
