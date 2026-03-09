@@ -242,6 +242,9 @@ export default function AdminDashboard() {
           nextDay.breakEndTime = time ?? currentDay.breakEndTime;
           nextDay.breakEndPeriod = period ?? currentDay.breakEndPeriod;
         }
+      } else if (field === "startTime") {
+        nextDay.startTime = time ?? currentDay.startTime;
+        nextDay.startPeriod = period ?? currentDay.startPeriod;
       } else {
         nextDay[field] = value;
       }

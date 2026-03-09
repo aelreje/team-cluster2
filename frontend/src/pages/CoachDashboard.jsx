@@ -747,6 +747,9 @@ useEffect(() => {
           currentDaySchedule.breakEndTime = time ?? baseDaySchedule.breakEndTime;
           currentDaySchedule.breakEndPeriod = period ?? baseDaySchedule.breakEndPeriod;
         }
+      } else if (field === "startTime") {
+        currentDaySchedule.startTime = time ?? baseDaySchedule.startTime;
+        currentDaySchedule.startPeriod = period ?? baseDaySchedule.startPeriod;
       } else {
         currentDaySchedule[field] = value;
       }
