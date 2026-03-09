@@ -500,12 +500,12 @@ useEffect(() => {
   }, []);
 
   const persistAttendance = async nextAttendance => {
-    if (!activeCluster?.id) return;
+    if (!dashboardCluster?.id) return;
 
     const response = await apiFetch("api/save_coach_attendance.php", {
       method: "POST",
       body: JSON.stringify({
-        cluster_id: activeCluster.id,
+        cluster_id: dashboardCluster.id,
         ...nextAttendance,
         timeInAt: nextAttendance.timeInAt ? toLocalSqlDateTime(nextAttendance.timeInAt) : null,
         timeOutAt: nextAttendance.timeOutAt ? toLocalSqlDateTime(nextAttendance.timeOutAt) : null,
@@ -520,18 +520,19 @@ useEffect(() => {
   };
 
   const handleCoachTimeIn = async () => {
-    if (!activeCluster?.id || (attendanceLog.timeInAt && !attendanceLog.timeOutAt)) return;
+    if (!dashboardCluster?.id || (attendanceLog.timeInAt && !attendanceLog.timeOutAt)) return;
     await persistAttendance({ timeInAt: new Date(), timeOutAt: null, tag: "On Time" });
   };
 
   const handleCoachTimeOut = async () => {
-    if (!activeCluster?.id || !attendanceLog.timeInAt || attendanceLog.timeOutAt) return;
+    if (!dashboardCluster?.id || !attendanceLog.timeInAt || attendanceLog.timeOutAt) return;
     await persistAttendance({ ...attendanceLog, timeOutAt: new Date() });
   };
 
   const hasActiveTimeIn = Boolean(attendanceLog.timeInAt && !attendanceLog.timeOutAt);
   const hasCompletedShift = Boolean(attendanceLog.timeInAt && attendanceLog.timeOutAt);
-  const activeCoachSchedule = activeCluster?.coach_schedule ?? null;
+  const dashboardCluster = activeCluster ?? clusters.find(cluster => cluster.status === "active") ?? null;
+  const activeCoachSchedule = dashboardCluster?.coach_schedule ?? null;
   const todayCoachSchedule = getTodayCoachSchedule(activeCoachSchedule);
   const coachAttendanceTag = resolveAttendanceMainTag({
     attendanceTag: attendanceLog.tag,
@@ -541,7 +542,7 @@ useEffect(() => {
   });
   const coachDashboardMeta = useMemo(() => ({
     attendanceTag: coachAttendanceTag,
-    scheduleTag: todayCoachSchedule ? "Scheduled" : activeCluster ? "Cluster active" : "No active cluster",
+    scheduleTag: todayCoachSchedule ? "Scheduled" : dashboardCluster ? "Cluster active" : "No active cluster",
     breakTag: "Break inactive",
     breakTime: todayCoachSchedule
       ? formatBreakTimeRange(
@@ -551,8 +552,8 @@ useEffect(() => {
           todayCoachSchedule.breakEndPeriod
         )
       : "—",
-    availabilityLabel: activeCluster ? "Available" : "Not available"
-  }), [activeCluster, coachAttendanceTag, todayCoachSchedule]);
+    availabilityLabel: dashboardCluster ? "Available" : "Not available"
+  }), [dashboardCluster, coachAttendanceTag, todayCoachSchedule]);
 
   const handleLogout = async () => {
     try {
@@ -1070,7 +1071,7 @@ useEffect(() => {
               attendanceControls={{
                 timeInAt: attendanceLog.timeInAt,
                 timeOutAt: attendanceLog.timeOutAt,
-                canClickTimeIn: Boolean(activeCluster?.id) && !hasActiveTimeIn,
+                canClickTimeIn: Boolean(dashboardCluster?.id) && !hasActiveTimeIn,
                 canClickTimeOut: hasActiveTimeIn,
                 hasCompletedShift,
                 onTimeIn: handleCoachTimeIn,
