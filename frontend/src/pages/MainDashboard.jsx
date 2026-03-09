@@ -14,6 +14,7 @@ function TimeCard({
   hasActiveTimeIn,
   onToggleTimeIn,
   canToggleTimeIn,
+  hasCompletedShift = false,
   statusTags = [],
 }) {
   return (
@@ -21,14 +22,18 @@ function TimeCard({
       <div className="time-panel">
         <div className="time-counter">{counterDisplay}</div>
 
-        <button
-          type="button"
-          className="time-in-btn"
-          onClick={onToggleTimeIn}
-          disabled={!canToggleTimeIn}
-        >
-          {hasActiveTimeIn ? "Time Out" : "Time In"}
-        </button>
+        {hasCompletedShift ? (
+          <p className="time-complete-message">Thank you for your hard work.</p>
+        ) : (
+          <button
+            type="button"
+            className="time-in-btn"
+            onClick={onToggleTimeIn}
+            disabled={!canToggleTimeIn}
+          >
+            {hasActiveTimeIn ? "Time Out" : "Time In"}
+          </button>
+        )}
 
         <div className="time-tag-list" aria-label="Today status tags">
           {statusTags.map(tag => (
@@ -201,6 +206,7 @@ export default function MainDashboard({
 
   const activeTimeIn = attendanceControls?.timeInAt ?? timeInStart;
   const activeTimeOut = attendanceControls?.timeOutAt ?? null;
+  const hasCompletedShift = Boolean(attendanceControls?.hasCompletedShift);
   const hasActiveTimeIn = Boolean(activeTimeIn && !activeTimeOut);
   const canToggleTimeIn = attendanceControls
     ? Boolean(attendanceControls.canClickTimeIn || attendanceControls.canClickTimeOut)
@@ -302,6 +308,7 @@ export default function MainDashboard({
           hasActiveTimeIn={hasActiveTimeIn}
           onToggleTimeIn={onToggleTimeIn}
           canToggleTimeIn={canToggleTimeIn}
+          hasCompletedShift={hasCompletedShift}
           statusTags={statusTags}
         />
         <AnnouncementCard canEdit={canEditCards} />

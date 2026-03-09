@@ -229,6 +229,17 @@ export default function EmployeeDashboard() {
     return new Date(year, month - 1, day, hours, minutes, Number.isNaN(seconds) ? 0 : seconds);
   };
 
+  const isSameCalendarDay = (firstDate, secondDate) => {
+    if (!(firstDate instanceof Date) || Number.isNaN(firstDate.getTime())) return false;
+    if (!(secondDate instanceof Date) || Number.isNaN(secondDate.getTime())) return false;
+
+    return (
+      firstDate.getFullYear() === secondDate.getFullYear() &&
+      firstDate.getMonth() === secondDate.getMonth() &&
+      firstDate.getDate() === secondDate.getDate()
+    );
+  };
+
   const persistAttendance = async nextAttendance => {
     if (!activeCluster?.cluster_id) {
       setAttendanceLog(nextAttendance);
@@ -339,8 +350,10 @@ export default function EmployeeDashboard() {
   const hasActiveTimeIn = Boolean(attendanceLog.timeInAt && !attendanceLog.timeOutAt);
   const hasTeamCluster = Boolean(activeCluster?.cluster_id);
   const canUseAttendanceControls = hasTeamCluster && hasScheduleToday;
-  const canClickTimeIn = canUseAttendanceControls && !hasActiveTimeIn;
-  const canClickTimeOut = canUseAttendanceControls && hasActiveTimeIn;
+  const hasTimedOutToday = isSameCalendarDay(attendanceLog.timeOutAt, new Date());
+  const hasCompletedShift = hasTimedOutToday && !hasActiveTimeIn;
+  const canClickTimeIn = canUseAttendanceControls && !hasActiveTimeIn && !hasTimedOutToday;
+  const canClickTimeOut = hasActiveTimeIn;
   const breakTimeToday = todaySchedule
     ? formatBreakTimeRange(
         todaySchedule.breakStartTime,
@@ -432,6 +445,7 @@ export default function EmployeeDashboard() {
                 timeOutAt: attendanceLog.timeOutAt,
                 canClickTimeIn,
                 canClickTimeOut,
+                hasCompletedShift,
                 onTimeIn: handleTimeIn,
                 onTimeOut: handleTimeOut
               }}

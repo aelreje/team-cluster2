@@ -764,6 +764,14 @@
   box-shadow: none;
 }
 
+.time-complete-message {
+  margin: 6px auto 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1b3d76;
+  text-align: center;
+}
+
 
 .time-tag-list {
   margin-top: 4px;
