@@ -461,7 +461,7 @@ const handleOpenRejectModal = cluster => {
 
       {managingScheduleCluster && (
         <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal-card manage-team-modal">
+          <div className="modal-card schedule-modal">
             <div className="modal-header">
               <div>
                 <div className="modal-title">Manage Schedule</div>
@@ -474,20 +474,16 @@ const handleOpenRejectModal = cluster => {
               </button>
             </div>
             <div className="modal-body">
-              <div className="schedule-grid">
-                <div className="schedule-side-panel">
-                  <div className="schedule-group-title">Work Days</div>
-                  <div className="schedule-day-list">
-                    {dayOptions.map(day => (
-                      <label key={day} className="schedule-day-item">
-                        <input type="checkbox" checked={scheduleForm.days.includes(day)} onChange={() => handleToggleScheduleDay(day)} />
-                        <span>{day}</span>
-                      </label>
-                    ))}
-                  </div>
+              <div className="schedule-card">
+                <div className="schedule-heading">
+                  <div className="schedule-label">Schedule Details</div>
+                  <p className="schedule-helper-text">
+                    Turn days on or off, then update the work shift and break windows.
+                  </p>
                 </div>
-                <div className="schedule-days-panel">
-                  {scheduleForm.days.map(day => {
+                <div className="schedule-day-grid">
+                  {dayOptions.map(day => {
+                    const isWorkingDay = scheduleForm.days.includes(day);
                     const daySchedule = scheduleForm.daySchedules[day] ?? { ...defaultDaySchedule };
                     const shiftRangeOptions = getTimeOptionsWithinRange(daySchedule.startTime, daySchedule.startPeriod, daySchedule.endTime, daySchedule.endPeriod);
                     const breakEndOptions = getTimeOptionsWithinRange(daySchedule.breakStartTime, daySchedule.breakStartPeriod, daySchedule.endTime, daySchedule.endPeriod);
@@ -497,60 +493,76 @@ const handleOpenRejectModal = cluster => {
                     const breakLabel = `${Math.floor(breakMinutes / 60)}h ${breakMinutes % 60}m`;
 
                     return (
-                      <div key={day} className="schedule-day-card">
+                      <div key={day} className="schedule-day-row">
                         <div className="schedule-day-header">
-                          <span>{day}</span>
-                          <span className="schedule-shift-tag">{daySchedule.shiftType}</span>
+                          <label className="schedule-day-toggle">
+                            <input type="checkbox" checked={isWorkingDay} onChange={() => handleToggleScheduleDay(day)} />
+                            <span>{day}</span>
+                          </label>
+                          <span className={`schedule-day-status ${isWorkingDay ? "is-working" : "is-off"}`}>
+                            {isWorkingDay ? "Working day" : "Off day"}
+                          </span>
                         </div>
-                        <div className="schedule-time-grid schedule-time-grid-layout">
-                          <div className="schedule-panel">
-                            <div className="schedule-panel-title">Working Hours</div>
-                            <div className="schedule-time-row schedule-field">
-                              <div className="schedule-time-label">Start</div>
-                              <select value={`${daySchedule.startTime}|${daySchedule.startPeriod}`} onChange={event => handleChangeDayTime(day, "startTime", event.target.value)}>
-                                {timeOptions.map(option => (<option key={`${day}-start-${option}`} value={`${option}|AM`}>{option} AM</option>))}
-                                {timeOptions.map(option => (<option key={`${day}-start-${option}-pm`} value={`${option}|PM`}>{option} PM</option>))}
-                              </select>
+                        {isWorkingDay ? (
+                          <div className="schedule-time-grid schedule-time-grid-layout">
+                            <div className="schedule-panel">
+                              <div className="schedule-panel-title">Main Shift</div>
+                              <div className="schedule-time-row schedule-field">
+                                <div className="schedule-time-label">Start Time</div>
+                                <div className="schedule-start-time">
+                                  <select value={daySchedule.startTime} onChange={event => handleChangeDayTime(day, "startTime", `${event.target.value}|${daySchedule.startPeriod}`)}>
+                                    {timeOptions.map(time => (<option key={`${day}-start-${time}`} value={time}>{time}</option>))}
+                                  </select>
+                                  <select value={daySchedule.startPeriod} onChange={event => handleChangeDayTime(day, "startTime", `${daySchedule.startTime}|${event.target.value}`)}>
+                                    <option value="AM">AM</option>
+                                    <option value="PM">PM</option>
+                                  </select>
+                                </div>
+                              </div>
+                              <div className="schedule-time-row schedule-field">
+                                <div className="schedule-time-label">End Time</div>
+                                <select value={`${daySchedule.endTime}|${daySchedule.endPeriod}`} onChange={event => handleChangeDayTime(day, "endTime", event.target.value)}>
+                                  {shiftRangeOptions.map(option => (<option key={`${day}-end-${option.time}-${option.period}`} value={`${option.time}|${option.period}`}>{option.time} {option.period}</option>))}
+                                </select>
+                              </div>
+                              <div className="schedule-panel-total">Total: {shiftHoursLabel}</div>
                             </div>
-                            <div className="schedule-time-row schedule-field">
-                              <div className="schedule-time-label">End</div>
-                              <select value={`${daySchedule.endTime}|${daySchedule.endPeriod}`} onChange={event => handleChangeDayTime(day, "endTime", event.target.value)}>
-                                {shiftRangeOptions.map(option => (<option key={`${day}-end-${option.time}-${option.period}`} value={`${option.time}|${option.period}`}>{option.time} {option.period}</option>))}
-                              </select>
+                            <div className="schedule-panel">
+                              <div className="schedule-panel-title">Shift Details</div>
+                              <div className="schedule-time-row schedule-field">
+                                <div className="schedule-time-label">Shift Type</div>
+                                <input type="text" value={daySchedule.shiftType} readOnly />
+                              </div>
+                              <div className="schedule-time-row schedule-field">
+                                <div className="schedule-time-label">Work Setup</div>
+                                <select value={daySchedule.workSetup} onChange={event => handleChangeDayTime(day, "workSetup", event.target.value)}>
+                                  {workSetupOptions.map(option => (<option key={`${day}-work-setup-${option}`} value={option}>{option}</option>))}
+                                </select>
+                              </div>
                             </div>
-                            <div className="schedule-panel-total">Total: {shiftHoursLabel}</div>
+                            <div className="schedule-panel">
+                              <div className="schedule-panel-title">Scheduled Breaks</div>
+                              <div className="schedule-time-row schedule-field">
+                                <div className="schedule-time-label">Break Start</div>
+                                <select className="schedule-break-select" value={`${daySchedule.breakStartTime}|${daySchedule.breakStartPeriod}`} onChange={event => handleChangeDayTime(day, "breakStart", event.target.value)}>
+                                  {shiftRangeOptions.map(option => (<option key={`${day}-break-start-${option.time}-${option.period}`} value={`${option.time}|${option.period}`}>{option.time} {option.period}</option>))}
+                                </select>
+                              </div>
+                              <div className="schedule-time-row schedule-field">
+                                <div className="schedule-time-label">Break End</div>
+                                <select className="schedule-break-select" value={`${daySchedule.breakEndTime}|${daySchedule.breakEndPeriod}`} onChange={event => handleChangeDayTime(day, "breakEnd", event.target.value)}>
+                                  {breakEndOptions.map(option => (<option key={`${day}-break-end-${option.time}-${option.period}`} value={`${option.time}|${option.period}`}>{option.time} {option.period}</option>))}
+                                </select>
+                              </div>
+                              <div className="schedule-panel-total">Total Break: {breakLabel}</div>
+                              <div className="modal-text">{formatBreakTimeRange(daySchedule.breakStartTime, daySchedule.breakStartPeriod, daySchedule.breakEndTime, daySchedule.breakEndPeriod)}</div>
+                            </div>
                           </div>
-                          <div className="schedule-panel">
-                            <div className="schedule-panel-title">Shift Details</div>
-                            <div className="schedule-time-row schedule-field">
-                              <div className="schedule-time-label">Shift Type</div>
-                              <input type="text" value={daySchedule.shiftType} readOnly />
-                            </div>
-                            <div className="schedule-time-row schedule-field">
-                              <div className="schedule-time-label">Work Setup</div>
-                              <select value={daySchedule.workSetup} onChange={event => handleChangeDayTime(day, "workSetup", event.target.value)}>
-                                {workSetupOptions.map(option => (<option key={`${day}-work-setup-${option}`} value={option}>{option}</option>))}
-                              </select>
-                            </div>
+                        ) : (
+                          <div className="schedule-not-working">
+                            Day is marked as off. Enable it to edit shift and break settings.
                           </div>
-                          <div className="schedule-panel">
-                            <div className="schedule-panel-title">Scheduled Breaks</div>
-                            <div className="schedule-time-row schedule-field">
-                              <div className="schedule-time-label">Break Start</div>
-                              <select value={`${daySchedule.breakStartTime}|${daySchedule.breakStartPeriod}`} onChange={event => handleChangeDayTime(day, "breakStart", event.target.value)}>
-                                {shiftRangeOptions.map(option => (<option key={`${day}-break-start-${option.time}-${option.period}`} value={`${option.time}|${option.period}`}>{option.time} {option.period}</option>))}
-                              </select>
-                            </div>
-                            <div className="schedule-time-row schedule-field">
-                              <div className="schedule-time-label">Break End</div>
-                              <select value={`${daySchedule.breakEndTime}|${daySchedule.breakEndPeriod}`} onChange={event => handleChangeDayTime(day, "breakEnd", event.target.value)}>
-                                {breakEndOptions.map(option => (<option key={`${day}-break-end-${option.time}-${option.period}`} value={`${option.time}|${option.period}`}>{option.time} {option.period}</option>))}
-                              </select>
-                            </div>
-                            <div className="schedule-panel-total">Total Break: {breakLabel}</div>
-                            <div className="modal-text">{formatBreakTimeRange(daySchedule.breakStartTime, daySchedule.breakStartPeriod, daySchedule.breakEndTime, daySchedule.breakEndPeriod)}</div>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     );
                   })}
