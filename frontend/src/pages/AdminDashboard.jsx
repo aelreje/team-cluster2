@@ -481,30 +481,60 @@ const handleOpenRejectModal = cluster => {
             {clusters.length === 0 ? (
               <div className="empty-state">No team clusters available.</div>
             ) : (
-              <div className="table-card">
-                <div className="table-header">
-                  <div>Cluster Name</div>
-                  <div>Coach</div>
-                  <div>Members</div>
-                  <div>Status</div>
-                  <div>Action</div>
-                </div>
-                {clusters.map(cluster => (
-                  <div key={cluster.id} className="table-row">
-                    <div className="table-cell">{cluster.name}</div>
-                    <div className="table-cell">{cluster.coach}</div>
-                    <div className="table-cell">{cluster.members ?? 0}</div>
-                    <div className="table-cell">
-                      <span className={`badge ${cluster.status}`}>{cluster.status}</span>
-                    </div>
-                    <div className="table-cell">
-                      <button className="btn primary" type="button" onClick={() => handleOpenScheduleModal(cluster)}>
-                        Manage
-                      </button>
-                    </div>
+              <>
+                <div className="table-card">
+                  <div className="table-header">
+                    <div>Cluster Name</div>
+                    <div>Coach</div>
+                    <div>Members</div>
+                    <div>Status</div>
+                    <div>Action</div>
                   </div>
-                ))}
-              </div>
+                  {clusters.map(cluster => (
+                    <div key={cluster.id} className="table-row">
+                      <div className="table-cell">{cluster.name}</div>
+                      <div className="table-cell">{cluster.coach}</div>
+                      <div className="table-cell">{cluster.members ?? 0}</div>
+                      <div className="table-cell">
+                        <span className={`badge ${cluster.status}`}>{cluster.status}</span>
+                      </div>
+                      <div className="table-cell">
+                        <button className="btn primary" type="button" onClick={() => handleOpenScheduleModal(cluster)}>
+                          Manage
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="section-title">Team Coach Schedule by Coach</div>
+                <div className="table-card">
+                  <div className="table-header">
+                    <div>Coach</div>
+                    <div>Cluster Name</div>
+                    <div>Members</div>
+                    <div>Status</div>
+                    <div>Action</div>
+                  </div>
+                  {[...clusters]
+                    .sort((a, b) => (a.coach ?? "").localeCompare(b.coach ?? ""))
+                    .map(cluster => (
+                      <div key={`coach-${cluster.id}`} className="table-row">
+                        <div className="table-cell">{cluster.coach || "—"}</div>
+                        <div className="table-cell">{cluster.name}</div>
+                        <div className="table-cell">{cluster.members ?? 0}</div>
+                        <div className="table-cell">
+                          <span className={`badge ${cluster.status}`}>{cluster.status}</span>
+                        </div>
+                        <div className="table-cell">
+                          <button className="btn primary" type="button" onClick={() => handleOpenScheduleModal(cluster)}>
+                            Manage
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </>
             )}
           </section>
         )}
