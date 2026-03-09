@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../api/api";
 import DashboardSidebar from "../components/DashboardSidebar";
 import MainDashboard from "./MainDashboard";
 import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
+import { resolveAttendanceMainTag } from "../utils/attendanceTags";
 
 export default function CoachDashboard() {
   const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -57,6 +58,7 @@ export default function CoachDashboard() {
   const [activeMembersLoading, setActiveMembersLoading] = useState(false);
   const [activeMembersError, setActiveMembersError] = useState("");
   const [confirmState, setConfirmState] = useState(null);
+  const [attendanceLog, setAttendanceLog] = useState({ timeInAt: null, timeOutAt: null, tag: null });
   const [activeNav, setActiveNav] = useState("Team");
   const [scheduleForm, setScheduleForm] = useState({
     days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
@@ -76,6 +78,26 @@ export default function CoachDashboard() {
     { label: "Attendance", onClick: () => (window.location.href = "/coach/attendance") },
     { label: "Schedule" }
   ];
+
+  const parseSqlDateTime = value => {
+    if (!value || typeof value !== "string") return null;
+    const [datePart, timePart] = value.trim().split(" ");
+    if (!datePart || !timePart) return null;
+    const [year, month, day] = datePart.split("-").map(Number);
+    const [hours, minutes, seconds] = timePart.split(":").map(Number);
+    if ([year, month, day, hours, minutes].some(Number.isNaN)) return null;
+    return new Date(year, month - 1, day, hours, minutes, Number.isNaN(seconds) ? 0 : seconds);
+  };
+
+  const toLocalSqlDateTime = date => {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const day = `${date.getDate()}`.padStart(2, "0");
+    const hours = `${date.getHours()}`.padStart(2, "0");
+    const minutes = `${date.getMinutes()}`.padStart(2, "0");
+    const seconds = `${date.getSeconds()}`.padStart(2, "0");
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
 
   const normalizeSchedule = schedule => {
     if (!schedule) return schedule;
@@ -445,6 +467,71 @@ useEffect(() => {
         setEmployeeLoading(false);
       });
   }, [activeCluster]);
+
+  useEffect(() => {
+    const loadCoachAttendance = async () => {
+      try {
+        const history = await apiFetch("api/coach_attendance_history.php");
+        const records = Array.isArray(history) ? history : [];
+        const activeRecord = records.find(entry => entry.time_in_at && !entry.time_out_at) ?? records[0] ?? null;
+        setAttendanceLog({
+          timeInAt: parseSqlDateTime(activeRecord?.time_in_at ?? null),
+          timeOutAt: parseSqlDateTime(activeRecord?.time_out_at ?? null),
+          tag: activeRecord?.tag ?? null,
+        });
+      } catch {
+        setAttendanceLog({ timeInAt: null, timeOutAt: null, tag: null });
+      }
+    };
+
+    loadCoachAttendance();
+  }, []);
+
+  const persistAttendance = async nextAttendance => {
+    if (!activeCluster?.id) return;
+
+    const response = await apiFetch("api/save_coach_attendance.php", {
+      method: "POST",
+      body: JSON.stringify({
+        cluster_id: activeCluster.id,
+        ...nextAttendance,
+        timeInAt: nextAttendance.timeInAt ? toLocalSqlDateTime(nextAttendance.timeInAt) : null,
+        timeOutAt: nextAttendance.timeOutAt ? toLocalSqlDateTime(nextAttendance.timeOutAt) : null,
+      })
+    });
+
+    setAttendanceLog({
+      timeInAt: parseSqlDateTime(response?.attendance?.timeInAt ?? null),
+      timeOutAt: parseSqlDateTime(response?.attendance?.timeOutAt ?? null),
+      tag: response?.attendance?.tag ?? null,
+    });
+  };
+
+  const handleCoachTimeIn = async () => {
+    if (!activeCluster?.id || (attendanceLog.timeInAt && !attendanceLog.timeOutAt)) return;
+    await persistAttendance({ timeInAt: new Date(), timeOutAt: null, tag: "On Time" });
+  };
+
+  const handleCoachTimeOut = async () => {
+    if (!activeCluster?.id || !attendanceLog.timeInAt || attendanceLog.timeOutAt) return;
+    await persistAttendance({ ...attendanceLog, timeOutAt: new Date() });
+  };
+
+  const hasActiveTimeIn = Boolean(attendanceLog.timeInAt && !attendanceLog.timeOutAt);
+  const hasCompletedShift = Boolean(attendanceLog.timeInAt && attendanceLog.timeOutAt);
+  const coachAttendanceTag = resolveAttendanceMainTag({
+    attendanceTag: attendanceLog.tag,
+    schedule: null,
+    timeInAt: attendanceLog.timeInAt,
+    fallbackTag: "Scheduled"
+  });
+  const coachDashboardMeta = useMemo(() => ({
+    attendanceTag: coachAttendanceTag,
+    scheduleTag: activeCluster ? "Cluster active" : "No active cluster",
+    breakTag: "Break inactive",
+    breakTime: "—",
+    availabilityLabel: activeCluster ? "Available" : "Not available"
+  }), [activeCluster, coachAttendanceTag]);
 
   const handleLogout = async () => {
     try {
@@ -953,7 +1040,19 @@ useEffect(() => {
       <main className="main">
         {activeNav === "Dashboard" ? (
           <section className="content">
-            <MainDashboard showMemberStatusCard />
+            <MainDashboard
+              showMemberStatusCard
+              attendanceControls={{
+                timeInAt: attendanceLog.timeInAt,
+                timeOutAt: attendanceLog.timeOutAt,
+                canClickTimeIn: Boolean(activeCluster?.id) && !hasActiveTimeIn,
+                canClickTimeOut: hasActiveTimeIn,
+                hasCompletedShift,
+                onTimeIn: handleCoachTimeIn,
+                onTimeOut: handleCoachTimeOut
+              }}
+              dashboardMeta={coachDashboardMeta}
+            />
           </section>
         ) : (
           <>

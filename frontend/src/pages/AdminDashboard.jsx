@@ -12,12 +12,16 @@ export default function AdminDashboard() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectError, setRejectError] = useState("");
   const [isSubmittingReject, setIsSubmittingReject] = useState(false);
+  const [coachAttendance, setCoachAttendance] = useState([]);
+  const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [editingCoachAttendance, setEditingCoachAttendance] = useState(null);
+  const [editForm, setEditForm] = useState({ timeInAt: "", timeOutAt: "", tag: "", note: "" });
   const dateTimeLabel = useLiveDateTime();
   const { user } = useCurrentUser();
   const navItems = [
     { label: "Dashboard", active: activeNav === "Dashboard", onClick: () => setActiveNav("Dashboard") },
     { label: "Team", active: activeNav === "Team", onClick: () => setActiveNav("Team") },
-    { label: "Attendance" },
+    { label: "Attendance", active: activeNav === "Attendance", onClick: () => setActiveNav("Attendance") },
     { label: "Schedule" }
   ];
 
@@ -35,6 +39,52 @@ export default function AdminDashboard() {
     const interval = setInterval(fetchClusters, 5000);
     return () => clearInterval(interval);
   }, [fetchClusters]);
+
+  useEffect(() => {
+    if (activeNav !== "Attendance") return;
+    apiFetch(`api/admin_coach_attendance.php?attendance_date=${attendanceDate}`)
+      .then(data => setCoachAttendance(Array.isArray(data) ? data : []))
+      .catch(() => setCoachAttendance([]));
+  }, [activeNav, attendanceDate]);
+
+  const toDateTimeLocalValue = value => {
+    if (!value) return "";
+    const date = new Date(value.replace(" ", "T"));
+    if (Number.isNaN(date.getTime())) return "";
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const day = `${date.getDate()}`.padStart(2, "0");
+    const hours = `${date.getHours()}`.padStart(2, "0");
+    const minutes = `${date.getMinutes()}`.padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const openAttendanceEdit = row => {
+    setEditingCoachAttendance(row);
+    setEditForm({
+      timeInAt: toDateTimeLocalValue(row.time_in_at),
+      timeOutAt: toDateTimeLocalValue(row.time_out_at),
+      tag: row.attendance_tag ?? "",
+      note: row.attendance_note ?? ""
+    });
+  };
+
+  const saveCoachAttendanceEdit = async () => {
+    if (!editingCoachAttendance?.attendance_id) return;
+    await apiFetch("api/admin_update_coach_attendance.php", {
+      method: "POST",
+      body: JSON.stringify({
+        attendance_id: editingCoachAttendance.attendance_id,
+        timeInAt: editForm.timeInAt ? `${editForm.timeInAt.replace("T", " ")}:00` : null,
+        timeOutAt: editForm.timeOutAt ? `${editForm.timeOutAt.replace("T", " ")}:00` : null,
+        tag: editForm.tag,
+        note: editForm.note
+      })
+    });
+    setEditingCoachAttendance(null);
+    const refreshed = await apiFetch(`api/admin_coach_attendance.php?attendance_date=${attendanceDate}`);
+    setCoachAttendance(Array.isArray(refreshed) ? refreshed : []);
+  };
 
   const handleLogout = async () => {
     try {
@@ -116,7 +166,7 @@ const handleOpenRejectModal = cluster => {
           <section className="content">
             <MainDashboard />
           </section>
-        ) : (
+        ) : activeNav === "Team" ? (
           <>
             <header className="topbar">
               <div>
@@ -179,8 +229,55 @@ const handleOpenRejectModal = cluster => {
               )}
           </section>
           </>
+        ) : (
+          <section className="content">
+            <div className="section-title">Coach Attendance</div>
+            <label className="attendance-date" htmlFor="admin-coach-attendance-date">
+              <span>Date</span>
+              <input id="admin-coach-attendance-date" type="date" value={attendanceDate} onChange={event => setAttendanceDate(event.target.value)} />
+            </label>
+            {coachAttendance.length === 0 ? (
+              <div className="empty-state">No coach attendance records for selected date.</div>
+            ) : (
+              <div className="table-card">
+                <div className="table-header">
+                  <div>Coach</div><div>Cluster</div><div>Time In</div><div>Time Out</div><div>Tag</div><div>Action</div>
+                </div>
+                {coachAttendance.map(row => (
+                  <div key={`${row.cluster_id}-${row.coach_id}`} className="table-row">
+                    <div className="table-cell">{row.coach_name}</div>
+                    <div className="table-cell">{row.cluster_name}</div>
+                    <div className="table-cell">{row.time_in_at ?? "—"}</div>
+                    <div className="table-cell">{row.time_out_at ?? "—"}</div>
+                    <div className="table-cell">{row.attendance_tag ?? "—"}</div>
+                    <div className="table-cell">
+                      <button className="btn" type="button" disabled={!row.attendance_id} onClick={() => openAttendanceEdit(row)}>Edit</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         )}
       </main>
+
+      {editingCoachAttendance && (
+        <div className="modal-overlay" role="dialog" aria-modal="true">
+          <div className="modal-card reject-modal-card">
+            <div className="modal-header">
+              <div className="modal-title">Edit Coach Attendance</div>
+              <button className="btn link modal-close-btn" type="button" onClick={() => setEditingCoachAttendance(null)}>Close</button>
+            </div>
+            <div className="modal-body">
+              <label className="form-field">Time In<input type="datetime-local" value={editForm.timeInAt} onChange={event => setEditForm(curr => ({ ...curr, timeInAt: event.target.value }))} /></label>
+              <label className="form-field">Time Out<input type="datetime-local" value={editForm.timeOutAt} onChange={event => setEditForm(curr => ({ ...curr, timeOutAt: event.target.value }))} /></label>
+              <label className="form-field">Tag<input type="text" value={editForm.tag} onChange={event => setEditForm(curr => ({ ...curr, tag: event.target.value }))} /></label>
+              <label className="form-field">Note<input type="text" value={editForm.note} onChange={event => setEditForm(curr => ({ ...curr, note: event.target.value }))} /></label>
+              <div className="form-actions"><button className="btn" type="button" onClick={saveCoachAttendanceEdit}>Save</button></div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {rejectingCluster && (
         <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
