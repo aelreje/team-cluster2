@@ -75,22 +75,32 @@ export default function CoachDashboard() {
   const { user } = useCurrentUser();
   const attendanceNavItems = ["My Attendance", "My Requests", "My Filing Center"];
   const [attendanceExpanded, setAttendanceExpanded] = useState(true);
+  const isAttendanceView = activeNav === "Attendance" || attendanceNavItems.includes(activeNav);
   const navItems = [
     { label: "Dashboard", active: activeNav === "Dashboard", onClick: () => setActiveNav("Dashboard") },
     { label: "Team", active: activeNav === "Team", onClick: () => setActiveNav("Team") },
     {
       label: "Attendance",
-      active: window.location.pathname === "/coach/attendance",
+      active: isAttendanceView,
       expanded: attendanceExpanded,
       onClick: () => setAttendanceExpanded(prev => !prev),
       children: attendanceNavItems.map(label => ({
         label,
-        active: label === "My Attendance" && window.location.pathname === "/coach/attendance",
-        onClick: () => (window.location.href = "/coach/attendance")
+        active: (label === "My Attendance" && activeNav === "Attendance") || activeNav === label,
+        onClick: () => setActiveNav(label === "My Attendance" ? "Attendance" : label)
       }))
     },
-    { label: "Schedule" }
+    { label: "Schedule", active: activeNav === "Schedule", onClick: () => setActiveNav("Schedule") }
   ];
+
+
+
+  useEffect(() => {
+    if (window.location.pathname === "/coach/attendance") {
+      setActiveNav("Attendance");
+      window.history.replaceState({}, "", "/coach");
+    }
+  }, []);
 
   const normalizeSchedule = schedule => {
     if (!schedule) return schedule;
@@ -1063,6 +1073,29 @@ useEffect(() => {
               }}
               dashboardMeta={coachDashboardMeta}
             />
+          </section>
+        ) : isAttendanceView ? (
+          <section className="content">
+            <div className="employee-card employee-attendance-history-card">
+              <div className="employee-card-header">
+                <div>
+                  <div className="employee-card-title">My Attendance</div>
+                  <p className="employee-card-subtitle">Attendance is now part of the Coach Dashboard.</p>
+                </div>
+              </div>
+              <div className="employee-attendance-history-table" role="table" aria-label="Coach attendance snapshot">
+                <div className="employee-attendance-history-header" role="row">
+                  <span role="columnheader">Time In</span>
+                  <span role="columnheader">Time Out</span>
+                  <span role="columnheader">Tag</span>
+                </div>
+                <div className="employee-attendance-history-row" role="row">
+                  <span role="cell">{attendanceLog.timeInAt ? attendanceLog.timeInAt.toLocaleString() : "—"}</span>
+                  <span role="cell">{attendanceLog.timeOutAt ? attendanceLog.timeOutAt.toLocaleString() : "—"}</span>
+                  <span role="cell">{coachAttendanceTag ?? "Pending"}</span>
+                </div>
+              </div>
+            </div>
           </section>
         ) : (
           <>

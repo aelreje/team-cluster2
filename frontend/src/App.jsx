@@ -3,7 +3,6 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AdminDashboard from "./pages/AdminDashboard";
 import CoachDashboard from "./pages/CoachDashboard";
-import CoachAttendancePage from "./pages/CoachAttendancePage";
 import EmployeeDashboard from "./pages/EmployeeDashboard.jsx";
 
 const normalizePath = path => {
@@ -22,7 +21,7 @@ const renderRoute = path => {
     case "/coach":
       return <CoachDashboard />;
     case "/coach/attendance":
-      return <CoachAttendancePage />;
+      return <CoachDashboard />;
     case "/employee":
       return <EmployeeDashboard />;
     default:
