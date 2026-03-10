@@ -8,7 +8,7 @@ import FilingCenterPanel from "../components/FilingCenterPanel";
 import DataPanel from "../components/DataPanel";
 import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
-import { resolveAttendanceMainTag } from "../utils/attendanceTags";
+import { normalizeSchedule as normalizeAttendanceSchedule, parseDateValue, resolveAttendanceMainTag } from "../utils/attendanceTags";
 
 const myRequestHighlights = [
   { key: "totalRequests", label: "Total Requests", icon: "🗎", accentClass: "is-slate", value: "--", subValue: "N/A" },
@@ -16,6 +16,24 @@ const myRequestHighlights = [
   { key: "approvedRequests", label: "Approved", icon: "✓", accentClass: "is-green", value: "--", subValue: "N/A" },
   { key: "rejectedRequests", label: "Rejected", icon: "✕", accentClass: "is-red", value: "--", subValue: "N/A" }
 ];
+
+const attendanceSortOptions = {
+  newestAttendanceFirst: "newestAttendanceFirst",
+  latestAttendanceFirst: "latestAttendanceFirst",
+  nameAz: "nameAz",
+  nameZa: "nameZa"
+};
+
+const attendanceTagOptions = ["On Time", "Late", "Scheduled", "Off Scheduled"];
+const weekDayByIndex = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const getTodayDateInputValue = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = `${now.getMonth() + 1}`.padStart(2, "0");
+  const day = `${now.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 export default function CoachDashboard() {
   const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -71,13 +89,17 @@ export default function CoachDashboard() {
   const [confirmState, setConfirmState] = useState(null);
   const [attendanceLog, setAttendanceLog] = useState({ timeInAt: null, timeOutAt: null, tag: null });
   const [coachAttendanceHistory, setCoachAttendanceHistory] = useState([]);
-  const [teamMemberAttendanceFilter, setTeamMemberAttendanceFilter] = useState("");
-  const [teamAttendanceDateStartFilter, setTeamAttendanceDateStartFilter] = useState("");
-  const [teamAttendanceDateEndFilter, setTeamAttendanceDateEndFilter] = useState("");
-  const [editingTeamAttendance, setEditingTeamAttendance] = useState(null);
-  const [teamAttendanceEditForm, setTeamAttendanceEditForm] = useState({ timeInAt: "", timeOutAt: "", tag: "", note: "" });
-  const [teamAttendanceEditError, setTeamAttendanceEditError] = useState("");
-  const [isSavingTeamAttendanceEdit, setIsSavingTeamAttendanceEdit] = useState(false);
+  const [attendanceRows, setAttendanceRows] = useState([]);
+  const [attendanceQuery, setAttendanceQuery] = useState("");
+  const [attendanceSort, setAttendanceSort] = useState(attendanceSortOptions.newestAttendanceFirst);
+  const [attendanceDateFilter, setAttendanceDateFilter] = useState(getTodayDateInputValue);
+  const [historyDateStartFilter, setHistoryDateStartFilter] = useState("");
+  const [historyDateEndFilter, setHistoryDateEndFilter] = useState("");
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedAttendanceEntry, setSelectedAttendanceEntry] = useState(null);
+  const [attendanceEditForm, setAttendanceEditForm] = useState({ timeInAt: "", timeOutAt: "", tag: "", note: "" });
+  const [attendanceSaveError, setAttendanceSaveError] = useState("");
+  const [isSavingAttendanceEdit, setIsSavingAttendanceEdit] = useState(false);
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [scheduleForm, setScheduleForm] = useState({
     days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
@@ -132,28 +154,62 @@ export default function CoachDashboard() {
     return schedule;
   };
 
+  const parseDateTimeValue = value => {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+
+    const raw = String(value).trim();
+    const sqlMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (sqlMatch) {
+      const [, year, month, day, hour = "00", minute = "00", second = "00"] = sqlMatch;
+      const parsedDate = new Date(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        Number(hour),
+        Number(minute),
+        Number(second)
+      );
+      return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+    }
+
+    const fallbackDate = new Date(raw);
+    return Number.isNaN(fallbackDate.getTime()) ? null : fallbackDate;
+  };
+
   const toDateInputValue = value => {
-    if (!value || typeof value !== "string") return "";
-    const [datePart] = value.split(" ");
-    return /^\d{4}-\d{2}-\d{2}$/.test(datePart) ? datePart : "";
+    if (!value) return "";
+    const date = parseDateTimeValue(value);
+    if (!date) return "";
+
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const day = `${date.getDate()}`.padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
 
   const toDateTimeLocalValue = value => {
-    if (!value || typeof value !== "string") return "";
-    const parsedDate = parseSqlDateTime(value);
-    if (!parsedDate) return "";
+    if (!value) return "";
+    const date = parseDateTimeValue(value);
+    if (!date) return "";
 
-    const year = parsedDate.getFullYear();
-    const month = `${parsedDate.getMonth() + 1}`.padStart(2, "0");
-    const day = `${parsedDate.getDate()}`.padStart(2, "0");
-    const hours = `${parsedDate.getHours()}`.padStart(2, "0");
-    const minutes = `${parsedDate.getMinutes()}`.padStart(2, "0");
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const day = `${date.getDate()}`.padStart(2, "0");
+    const hours = `${date.getHours()}`.padStart(2, "0");
+    const minutes = `${date.getMinutes()}`.padStart(2, "0");
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
+  const toSqlDateTimeValue = value => {
+    if (!value) return null;
+    return `${value.replace("T", " ")}:00`;
+  };
+
   const formatDateTimeLabel = value => {
-    const parsedDate = parseSqlDateTime(value);
-    return parsedDate ? parsedDate.toLocaleString() : "—";
+    if (!value) return "—";
+    const parsedDate = parseDateTimeValue(value);
+    return parsedDate ? parsedDate.toLocaleString() : value;
   };
 
   const createDaySchedules = (days = [], baseSchedule = {}) => {
@@ -232,6 +288,36 @@ export default function CoachDashboard() {
     const endTime = schedule.endTime ?? "5:00";
     const endPeriod = schedule.endPeriod ?? "PM";
     return `${startTime} ${startPeriod} - ${endTime} ${endPeriod}`;
+  };
+
+  const formatShiftRange = schedule => {
+    if (!schedule || typeof schedule !== "object") return "Schedule set";
+    const startTime = schedule.startTime ?? "9:00";
+    const startPeriod = schedule.startPeriod ?? "AM";
+    const endTime = schedule.endTime ?? "6:00";
+    const endPeriod = schedule.endPeriod ?? "PM";
+    return `${startTime} ${startPeriod} - ${endTime} ${endPeriod}`;
+  };
+
+  const toAttendanceMinutes = (time, period) => {
+    const [hourPart, minutePart] = String(time ?? "").split(":");
+    const hour = Number(hourPart);
+    const minute = Number(minutePart);
+
+    if (
+      Number.isNaN(hour) ||
+      Number.isNaN(minute) ||
+      hour < 1 ||
+      hour > 12 ||
+      minute < 0 ||
+      minute > 59
+    ) {
+      return null;
+    }
+
+    const normalizedHour = hour % 12;
+    const periodOffset = period === "PM" ? 12 * 60 : 0;
+    return normalizedHour * 60 + minute + periodOffset;
   };
 
   const toMinutes = (time, period) => {
@@ -461,10 +547,11 @@ export default function CoachDashboard() {
       });
   }, []);
 
-useEffect(() => {
+  useEffect(() => {
     const active = clusters.find(cluster => cluster.status === "active");
     if (!active) {
       setActiveMembers([]);
+      setAttendanceRows([]);
       setActiveMembersError("");
       setActiveMembersLoading(false);
       return;
@@ -473,13 +560,14 @@ useEffect(() => {
     setActiveMembersLoading(true);
     setActiveMembersError("");
 
-    apiFetch(`api/manage_members.php?cluster_id=${active.id}`)
+    apiFetch(`api/manage_members.php?cluster_id=${active.id}&attendance_date=${attendanceDateFilter}`)
       .then(memberData => {
         const normalizedMembers = memberData.map(member => ({
           ...member,
           schedule: normalizeSchedule(member.schedule)
         }));
         setActiveMembers(normalizedMembers);
+        setAttendanceRows(normalizedMembers);
       })
       .catch(err => {
         setActiveMembersError(err?.error ?? "Unable to load active team members.");
@@ -487,19 +575,7 @@ useEffect(() => {
       .finally(() => {
         setActiveMembersLoading(false);
       });
-  }, [clusters]);
-
-  useEffect(() => {
-    if (activeMembers.length === 0) {
-      setTeamMemberAttendanceFilter("");
-      return;
-    }
-
-    const hasSelectedMember = activeMembers.some(member => String(member.id) === String(teamMemberAttendanceFilter));
-    if (!hasSelectedMember) {
-      setTeamMemberAttendanceFilter(String(activeMembers[0].id));
-    }
-  }, [activeMembers, teamMemberAttendanceFilter]);
+  }, [attendanceDateFilter, clusters]);
 
   useEffect(() => {
     if (!activeCluster) return;
@@ -1109,68 +1185,204 @@ useEffect(() => {
   const isMyRequestsView = activeNav === "My Requests";
   const isFilingCenterView = activeNav === "My Filing Center";
   const attendanceViewTitle = activeNav === "Team Cluster Attendance" ? "Team Cluster Attendance" : "My Attendance";
-  const selectedTeamMember = activeMembers.find(member => String(member.id) === String(teamMemberAttendanceFilter)) ?? null;
-  const selectedTeamMemberHistoryEntries = (selectedTeamMember?.attendance_history ?? [])
-    .flatMap(month => month.entries ?? [])
-    .sort((a, b) => {
-      const left = parseSqlDateTime(a.time_in_at ?? a.time_out_at)?.getTime() ?? 0;
-      const right = parseSqlDateTime(b.time_in_at ?? b.time_out_at)?.getTime() ?? 0;
-      return right - left;
+  const filteredAttendanceRows = useMemo(() => {
+    const query = attendanceQuery.trim().toLowerCase();
+    const filteredRows = attendanceRows.filter(member => {
+      const name = member.fullname?.toLowerCase() ?? "";
+      const tag = member.attendance_tag?.toLowerCase() ?? "";
+      return name.includes(query) || tag.includes(query);
     });
-  const filteredTeamMemberHistoryEntries = selectedTeamMemberHistoryEntries.filter(item => {
-    const entryDate = toDateInputValue(item.time_in_at ?? item.time_out_at);
-    if (!entryDate) return false;
-    if (teamAttendanceDateStartFilter && entryDate < teamAttendanceDateStartFilter) return false;
-    if (teamAttendanceDateEndFilter && entryDate > teamAttendanceDateEndFilter) return false;
-    return true;
+
+    const getTimestamp = member => {
+      const parsedTimeIn = parseDateValue(member.time_in_at);
+      return parsedTimeIn ? parsedTimeIn.getTime() : null;
+    };
+
+    const compareNames = (a, b) => (a.fullname ?? "").localeCompare(b.fullname ?? "");
+
+    return [...filteredRows].sort((a, b) => {
+      if (attendanceSort === attendanceSortOptions.nameAz) return compareNames(a, b);
+      if (attendanceSort === attendanceSortOptions.nameZa) return compareNames(b, a);
+
+      const aTimestamp = getTimestamp(a);
+      const bTimestamp = getTimestamp(b);
+      if (aTimestamp === null && bTimestamp === null) return compareNames(a, b);
+      if (aTimestamp === null) return 1;
+      if (bTimestamp === null) return -1;
+      if (attendanceSort === attendanceSortOptions.latestAttendanceFirst) return aTimestamp - bTimestamp;
+      return bTimestamp - aTimestamp;
+    });
+  }, [attendanceQuery, attendanceRows, attendanceSort]);
+
+  const getMemberCurrentDayScheduleDetails = member => {
+    const normalizedSchedule = normalizeAttendanceSchedule(member?.schedule);
+    if (!normalizedSchedule || typeof normalizedSchedule !== "object" || Array.isArray(normalizedSchedule)) return null;
+
+    const currentDay = weekDayByIndex[new Date().getDay()];
+    if (!currentDay || !Array.isArray(normalizedSchedule.days)) return null;
+    if (!normalizedSchedule.days.includes(currentDay)) return null;
+    return normalizedSchedule.daySchedules?.[currentDay] ?? normalizedSchedule;
+  };
+
+  const getMemberCurrentDaySchedule = member => {
+    const currentSchedule = getMemberCurrentDayScheduleDetails(member);
+    if (!currentSchedule) return "Not scheduled today";
+    return formatShiftRange(currentSchedule);
+  };
+
+  const getAttendanceMainTag = member => resolveAttendanceMainTag({
+    attendanceTag: member.attendance_tag,
+    schedule: member.schedule,
+    timeInAt: member.time_in_at,
+    fallbackTag: "Scheduled"
   });
 
-  const openTeamAttendanceEditModal = entry => {
-    if (!selectedTeamMember || !entry?.id) return;
-    setTeamAttendanceEditError("");
-    setEditingTeamAttendance({
-      attendanceId: entry.id,
-      employeeId: selectedTeamMember.id,
-      employeeName: selectedTeamMember.fullname
-    });
-    setTeamAttendanceEditForm({
+  const getAttendanceHistoryTag = entry => resolveAttendanceMainTag({
+    attendanceTag: entry?.tag,
+    schedule: selectedMember?.schedule,
+    timeInAt: entry?.time_in_at,
+    fallbackTag: "Scheduled"
+  });
+
+  const getAttendanceSubTags = member => {
+    const subTags = [];
+    const currentSchedule = getMemberCurrentDayScheduleDetails(member);
+    const timeInDate = parseDateValue(member.time_in_at);
+    const timeOutDate = parseDateValue(member.time_out_at);
+    const now = new Date();
+
+    const isSameDay = date => (
+      !!date &&
+      date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate()
+    );
+
+    const hasTodayTimeIn = isSameDay(timeInDate);
+    const hasTodayTimeOut = isSameDay(timeOutDate);
+
+    if (currentSchedule && !hasTodayTimeIn && !hasTodayTimeOut) {
+      subTags.push("Absent");
+      subTags.push("No Time In");
+      return subTags;
+    }
+
+    if (hasTodayTimeIn && !hasTodayTimeOut) subTags.push("No Time Out");
+    if (currentSchedule && hasTodayTimeOut && !hasTodayTimeIn) subTags.push("No Time In");
+    if (!currentSchedule) return subTags;
+
+    const shiftStartMinutes = toAttendanceMinutes(currentSchedule.startTime, currentSchedule.startPeriod);
+    const shiftEndMinutes = toAttendanceMinutes(currentSchedule.endTime, currentSchedule.endPeriod);
+    if (shiftStartMinutes === null || shiftEndMinutes === null) return subTags;
+
+    const shiftDurationMinutes = shiftEndMinutes - shiftStartMinutes;
+    if (shiftDurationMinutes <= 0) return subTags;
+
+    const timeInMinutes = hasTodayTimeIn ? timeInDate.getHours() * 60 + timeInDate.getMinutes() : null;
+    const timeOutMinutes = hasTodayTimeOut ? timeOutDate.getHours() * 60 + timeOutDate.getMinutes() : null;
+
+    if (timeInMinutes !== null && (timeInMinutes < shiftStartMinutes || timeInMinutes > shiftEndMinutes)) subTags.push("Off Scheduled");
+    if (timeInMinutes !== null && timeInMinutes < shiftStartMinutes) subTags.push("Early Time In");
+    if (timeOutMinutes !== null && timeOutMinutes < shiftEndMinutes) subTags.push("Early Time Out");
+
+    if (timeInMinutes !== null && timeOutMinutes !== null) {
+      const workedMinutes = Math.max(timeOutMinutes - timeInMinutes, 0);
+      if (workedMinutes < shiftDurationMinutes) subTags.push("Undertime");
+    }
+
+    return [...new Set(subTags)].filter(subTag => subTag !== "Off Scheduled");
+  };
+
+  const attendanceSummary = useMemo(() => {
+    const total = attendanceRows.length;
+    const timedIn = attendanceRows.filter(member => member.time_in_at && !member.time_out_at).length;
+    const completed = attendanceRows.filter(member => member.time_in_at && member.time_out_at).length;
+    return { total, timedIn, completed };
+  }, [attendanceRows]);
+
+  const filteredAttendanceHistory = useMemo(() => {
+    if (!selectedMember || !Array.isArray(selectedMember.attendance_history)) return [];
+    if (!historyDateStartFilter && !historyDateEndFilter) return selectedMember.attendance_history;
+
+    return selectedMember.attendance_history
+      .map(monthHistory => ({
+        ...monthHistory,
+        entries: (monthHistory.entries ?? []).filter(entry => {
+          const entryDate = toDateInputValue(entry.time_in_at ?? entry.time_out_at);
+          if (!entryDate) return false;
+          if (historyDateStartFilter && entryDate < historyDateStartFilter) return false;
+          if (historyDateEndFilter && entryDate > historyDateEndFilter) return false;
+          return true;
+        })
+      }))
+      .filter(monthHistory => monthHistory.entries.length > 0);
+  }, [historyDateEndFilter, historyDateStartFilter, selectedMember]);
+
+  const attendanceHistoryEntries = useMemo(
+    () => filteredAttendanceHistory.flatMap(monthHistory => monthHistory.entries ?? []),
+    [filteredAttendanceHistory]
+  );
+
+  const openAttendanceEditModal = entry => {
+    setSelectedAttendanceEntry(entry);
+    setAttendanceEditForm({
       timeInAt: toDateTimeLocalValue(entry.time_in_at),
       timeOutAt: toDateTimeLocalValue(entry.time_out_at),
       tag: entry.tag ?? "",
       note: entry.note ?? ""
     });
+    setAttendanceSaveError("");
   };
 
   const handleSaveTeamAttendanceEdit = async () => {
-    if (!editingTeamAttendance?.attendanceId || !dashboardCluster?.id) return;
-    setIsSavingTeamAttendanceEdit(true);
-    setTeamAttendanceEditError("");
+    if (!selectedAttendanceEntry?.id || !selectedMember?.id || !dashboardCluster?.id) return;
+    setIsSavingAttendanceEdit(true);
+    setAttendanceSaveError("");
 
     try {
       await apiFetch("api/coach_update_attendance.php", {
         method: "POST",
         body: JSON.stringify({
           cluster_id: dashboardCluster.id,
-          employee_id: editingTeamAttendance.employeeId,
-          attendance_id: editingTeamAttendance.attendanceId,
-          timeInAt: teamAttendanceEditForm.timeInAt ? `${teamAttendanceEditForm.timeInAt.replace("T", " ")}:00` : null,
-          timeOutAt: teamAttendanceEditForm.timeOutAt ? `${teamAttendanceEditForm.timeOutAt.replace("T", " ")}:00` : null,
-          tag: teamAttendanceEditForm.tag,
-          note: teamAttendanceEditForm.note
+          employee_id: selectedMember.id,
+          attendance_id: selectedAttendanceEntry.id,
+          timeInAt: toSqlDateTimeValue(attendanceEditForm.timeInAt),
+          timeOutAt: toSqlDateTimeValue(attendanceEditForm.timeOutAt),
+          tag: attendanceEditForm.tag.trim() || null,
+          note: attendanceEditForm.note
         })
       });
 
-      const refreshedMembers = await apiFetch(`api/manage_members.php?cluster_id=${dashboardCluster.id}`);
+      const refreshedMembers = await apiFetch(`api/manage_members.php?cluster_id=${dashboardCluster.id}&attendance_date=${attendanceDateFilter}`);
       const normalizedMembers = refreshedMembers.map(member => ({
         ...member,
         schedule: normalizeSchedule(member.schedule)
       }));
       setActiveMembers(normalizedMembers);
-      setEditingTeamAttendance(null);
+      setAttendanceRows(normalizedMembers);
+
+      const refreshedMember = normalizedMembers.find(member => Number(member.id) === Number(selectedMember.id));
+      if (refreshedMember) {
+        setSelectedMember(refreshedMember);
+        const refreshedEntry = refreshedMember.attendance_history
+          ?.flatMap(monthHistory => monthHistory.entries ?? [])
+          .find(entry => Number(entry.id) === Number(selectedAttendanceEntry.id));
+
+        if (refreshedEntry) {
+          setSelectedAttendanceEntry(refreshedEntry);
+          setAttendanceEditForm({
+            timeInAt: toDateTimeLocalValue(refreshedEntry.time_in_at),
+            timeOutAt: toDateTimeLocalValue(refreshedEntry.time_out_at),
+            tag: refreshedEntry.tag ?? "",
+            note: refreshedEntry.note ?? ""
+          });
+        }
+      }
+      setAttendanceSaveError("Attendance updated successfully.");
     } catch (err) {
-      setTeamAttendanceEditError(err?.error ?? "Unable to update attendance record.");
+      setAttendanceSaveError(err?.error ?? "Unable to update attendance record.");
     } finally {
-      setIsSavingTeamAttendanceEdit(false);
+      setIsSavingAttendanceEdit(false);
     }
   };
 
@@ -1207,97 +1419,102 @@ useEffect(() => {
             {isFilingCenterView ? (
               <FilingCenterPanel />
             ) : (
-            <div className="employee-card employee-attendance-history-card">
-              <div className="employee-card-header">
-                <div>
-                  <div className="employee-card-title">{isMyRequestsView ? "My Requests" : attendanceViewTitle}</div>
-                  <p className="employee-card-subtitle">
-                    {isTeamClusterAttendanceView
-                      ? "Review and edit your team members' attendance history."
-                      : "Attendance is now part of the Coach Dashboard."}
-                  </p>
+              <div className="employee-card employee-attendance-history-card">
+                <div className="employee-card-header">
+                  <div>
+                    <div className="employee-card-title">{isMyRequestsView ? "My Requests" : attendanceViewTitle}</div>
+                    <p className="employee-card-subtitle">
+                      {isTeamClusterAttendanceView
+                        ? "Review and edit your team members' attendance history."
+                        : "Attendance is now part of the Coach Dashboard."}
+                    </p>
+                  </div>
+                </div>
+                <div className="employee-card-body">
+                  {isMyRequestsView ? (
+                    <>
+                      <AttendanceHistoryHighlights highlights={myRequestHighlights} />
+                      <DataPanel type="requests" />
+                    </>
+                  ) : isTeamClusterAttendanceView ? (
+                    <>
+                      {activeMembersLoading && <div className="modal-text">Loading attendance records...</div>}
+                      {!activeMembersLoading && activeMembersError && <div className="error">{activeMembersError}</div>}
+                      {!activeMembersLoading && !activeMembersError && !dashboardCluster && (
+                        <div className="empty-state">No active team cluster found. Attendance records will appear once a cluster is active.</div>
+                      )}
+                      {!activeMembersLoading && !activeMembersError && dashboardCluster && (
+                        <>
+                          <div className="section-title">{dashboardCluster.name} Attendance ({attendanceDateFilter})</div>
+                          <div className="attendance-summary-grid">
+                            <div className="overview-card"><div className="overview-label">Employees</div><div className="overview-value">{attendanceSummary.total}</div></div>
+                            <div className="overview-card"><div className="overview-label">Timed In</div><div className="overview-value">{attendanceSummary.timedIn}</div></div>
+                            <div className="overview-card"><div className="overview-label">Completed Shift</div><div className="overview-value">{attendanceSummary.completed}</div></div>
+                          </div>
+                          <div className="attendance-controls">
+                            <label className="attendance-search" htmlFor="attendance-search-input">
+                              <span>Search</span>
+                              <input id="attendance-search-input" type="search" placeholder="Search by name or attendance tag" value={attendanceQuery} onChange={event => setAttendanceQuery(event.target.value)} />
+                            </label>
+                            <label className="attendance-date" htmlFor="attendance-date-filter">
+                              <span>Date</span>
+                              <input id="attendance-date-filter" type="date" value={attendanceDateFilter} onChange={event => setAttendanceDateFilter(event.target.value || getTodayDateInputValue())} />
+                            </label>
+                            <label className="attendance-sort" htmlFor="attendance-sort-select">
+                              <span>Sort</span>
+                              <select id="attendance-sort-select" value={attendanceSort} onChange={event => setAttendanceSort(event.target.value)}>
+                                <option value={attendanceSortOptions.newestAttendanceFirst}>Newest attendance first</option>
+                                <option value={attendanceSortOptions.latestAttendanceFirst}>Latest attendance first</option>
+                                <option value={attendanceSortOptions.nameAz}>Name (A-Z)</option>
+                                <option value={attendanceSortOptions.nameZa}>Name (Z-A)</option>
+                              </select>
+                            </label>
+                          </div>
+                          {attendanceRows.length === 0 && <div className="empty-state">No employees assigned to the active cluster yet.</div>}
+                          {attendanceRows.length > 0 && filteredAttendanceRows.length === 0 && <div className="empty-state">No employees match your search.</div>}
+                          {filteredAttendanceRows.length > 0 && (
+                            <div className="table-card attendance-table">
+                              <div className="table-header attendance-header"><div>Employee</div><div>Time In</div><div>Time Out</div><div>Tag</div></div>
+                              {filteredAttendanceRows.map(member => (
+                                <button
+                                  key={member.id}
+                                  type="button"
+                                  className="table-row attendance-row-button"
+                                  onClick={() => {
+                                    setSelectedMember(member);
+                                    setSelectedAttendanceEntry(null);
+                                    setAttendanceSaveError("");
+                                    setHistoryDateStartFilter("");
+                                    setHistoryDateEndFilter("");
+                                  }}
+                                >
+                                  <div className="table-cell attendance-name">
+                                    <div>{member.fullname}</div>
+                                    <div className="attendance-current-schedule">{getMemberCurrentDaySchedule(member)}</div>
+                                  </div>
+                                  <div className="table-cell">{formatDateTimeLabel(member.time_in_at)}</div>
+                                  <div className="table-cell">{formatDateTimeLabel(member.time_out_at)}</div>
+                                  <div className="table-cell attendance-main-tag-cell">
+                                    <span className={`member-status-tag ${getAttendanceMainTag(member) ? "is-active" : ""}`}>{getAttendanceMainTag(member)}</span>
+                                    <div className="attendance-subtag-list">
+                                      {getAttendanceSubTags(member).map(subTag => <span key={`${member.id}-${subTag}`} className="attendance-subtag">{subTag}</span>)}
+                                    </div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <AttendanceHistoryHighlights />
+                      <DataPanel type="attendance" records={coachAttendanceHistory} />
+                    </>
+                  )}
                 </div>
               </div>
-              <div className="employee-card-body">
-                {isMyRequestsView ? (
-                  <>
-                    <AttendanceHistoryHighlights highlights={myRequestHighlights} />
-                    <DataPanel type="requests" />
-                  </>
-                ) : isTeamClusterAttendanceView ? (
-                  <>
-                    {activeMembers.length === 0 ? (
-                      <div className="empty-state">No active team members found for this cluster yet.</div>
-                    ) : (
-                      <>
-                        <div className="attendance-history-range-filter" role="group" aria-label="Filter team member attendance">
-                          <label className="attendance-history-filter" htmlFor="coach-team-member-filter">
-                            <span>Team Member</span>
-                            <select
-                              id="coach-team-member-filter"
-                              value={teamMemberAttendanceFilter}
-                              onChange={event => setTeamMemberAttendanceFilter(event.target.value)}
-                            >
-                              {activeMembers.map(member => (
-                                <option key={member.id} value={member.id}>{member.fullname}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="attendance-history-filter" htmlFor="coach-attendance-history-date-filter-start">
-                            <span>From</span>
-                            <input
-                              id="coach-attendance-history-date-filter-start"
-                              type="date"
-                              value={teamAttendanceDateStartFilter}
-                              onChange={event => setTeamAttendanceDateStartFilter(event.target.value)}
-                            />
-                          </label>
-                          <label className="attendance-history-filter" htmlFor="coach-attendance-history-date-filter-end">
-                            <span>To</span>
-                            <input
-                              id="coach-attendance-history-date-filter-end"
-                              type="date"
-                              value={teamAttendanceDateEndFilter}
-                              onChange={event => setTeamAttendanceDateEndFilter(event.target.value)}
-                            />
-                          </label>
-                        </div>
-
-                        {filteredTeamMemberHistoryEntries.length > 0 ? (
-                          <div className="employee-attendance-history-table" role="table" aria-label="Team member attendance history">
-                            <div className="employee-attendance-history-header" role="row">
-                              <span role="columnheader">Date</span>
-                              <span role="columnheader">Time In</span>
-                              <span role="columnheader">Time Out</span>
-                              <span role="columnheader">Tag</span>
-                              <span role="columnheader">Action</span>
-                            </div>
-                            {filteredTeamMemberHistoryEntries.map(item => (
-                              <div key={`${selectedTeamMember?.id}-${item.id}`} className="employee-attendance-history-row" role="row">
-                                <span role="cell">{formatDateTimeLabel(item.time_in_at ?? item.time_out_at)}</span>
-                                <span role="cell">{formatDateTimeLabel(item.time_in_at)}</span>
-                                <span role="cell">{formatDateTimeLabel(item.time_out_at)}</span>
-                                <span role="cell">{item.tag ?? "Pending"}</span>
-                                <span role="cell">
-                                  <button className="btn" type="button" onClick={() => openTeamAttendanceEditModal(item)}>Edit</button>
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="empty-state">No attendance records match the selected filters.</div>
-                        )}
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <AttendanceHistoryHighlights />
-                    <DataPanel type="attendance" records={coachAttendanceHistory} />
-                  </>
-                )}
-              </div>
-            </div>
             )}
           </section>
         ) : (
@@ -1933,64 +2150,96 @@ useEffect(() => {
           </div>
         )}
 
-        {editingTeamAttendance && (
-          <div className="modal-overlay" role="dialog" aria-modal="true">
-            <div className="modal-card attendance-edit-modal">
-              <div className="modal-header">
+        {selectedMember && (
+          <div className="modal-overlay" role="presentation" onClick={() => { setSelectedMember(null); setSelectedAttendanceEntry(null); setAttendanceSaveError(""); setHistoryDateStartFilter(""); setHistoryDateEndFilter(""); }}>
+            <section className="modal-card attendance-modal" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+              <header className="modal-header">
                 <div>
-                  <div className="modal-title">Edit Team Attendance</div>
-                  <div className="modal-subtitle">{editingTeamAttendance.employeeName}</div>
+                  <h3 className="modal-title">{selectedMember.fullname}</h3>
+                  <p className="modal-subtitle">Attendance details</p>
                 </div>
-                <button className="btn link modal-close-btn" type="button" onClick={() => setEditingTeamAttendance(null)}>
+                <button type="button" className="btn secondary" onClick={() => { setSelectedMember(null); setSelectedAttendanceEntry(null); setAttendanceSaveError(""); setHistoryDateStartFilter(""); setHistoryDateEndFilter(""); }}>
                   Close
                 </button>
-              </div>
-              <div className="modal-body">
-                {teamAttendanceEditError && <div className="error">{teamAttendanceEditError}</div>}
-                <label className="form-field">
-                  Time In
-                  <input
-                    type="datetime-local"
-                    value={teamAttendanceEditForm.timeInAt}
-                    onChange={event => setTeamAttendanceEditForm(curr => ({ ...curr, timeInAt: event.target.value }))}
-                  />
-                </label>
-                <label className="form-field">
-                  Time Out
-                  <input
-                    type="datetime-local"
-                    value={teamAttendanceEditForm.timeOutAt}
-                    onChange={event => setTeamAttendanceEditForm(curr => ({ ...curr, timeOutAt: event.target.value }))}
-                  />
-                </label>
-                <label className="form-field">
-                  Tag
-                  <input
-                    type="text"
-                    value={teamAttendanceEditForm.tag}
-                    onChange={event => setTeamAttendanceEditForm(curr => ({ ...curr, tag: event.target.value }))}
-                  />
-                </label>
-                <label className="form-field">
-                  Note
-                  <input
-                    type="text"
-                    value={teamAttendanceEditForm.note}
-                    onChange={event => setTeamAttendanceEditForm(curr => ({ ...curr, note: event.target.value }))}
-                  />
-                </label>
-                <div className="attendance-edit-actions">
-                  <button
-                    className="btn primary"
-                    type="button"
-                    disabled={isSavingTeamAttendanceEdit}
-                    onClick={handleSaveTeamAttendanceEdit}
-                  >
-                    {isSavingTeamAttendanceEdit ? "Saving..." : "Save Changes"}
-                  </button>
+              </header>
+              <div className="modal-body attendance-modal-grid">
+                <div className="attendance-detail-item attendance-detail-note">
+                  <span className="attendance-detail-label">Attendance History</span>
+                  {Array.isArray(selectedMember.attendance_history) && selectedMember.attendance_history.length > 0 ? (
+                    <>
+                      <div className="attendance-history-range-filter" role="group" aria-label="Filter attendance history by date range">
+                        <label className="attendance-history-filter" htmlFor="attendance-history-date-filter-start"><span>From</span><input id="attendance-history-date-filter-start" type="date" value={historyDateStartFilter} onChange={event => setHistoryDateStartFilter(event.target.value)} /></label>
+                        <label className="attendance-history-filter" htmlFor="attendance-history-date-filter-end"><span>To</span><input id="attendance-history-date-filter-end" type="date" value={historyDateEndFilter} onChange={event => setHistoryDateEndFilter(event.target.value)} /></label>
+                      </div>
+                      {attendanceHistoryEntries.length > 0 ? (
+                        <div className="employee-attendance-history-table" role="table" aria-label="Attendance history">
+                          <div className="employee-attendance-history-header" role="row">
+                            <span role="columnheader">Date</span><span role="columnheader">Cluster</span><span role="columnheader">Time In</span><span role="columnheader">Time Out</span><span role="columnheader">Tag</span>
+                          </div>
+                          {attendanceHistoryEntries.map((entry, index) => {
+                            const historyTag = getAttendanceHistoryTag(entry);
+                            return (
+                              <button
+                                key={entry.id ?? `${entry.time_in_at ?? entry.time_out_at ?? "history"}-${index}`}
+                                type="button"
+                                className="employee-attendance-history-row attendance-row-button"
+                                role="row"
+                                onClick={() => openAttendanceEditModal(entry)}
+                              >
+                                <span role="cell">{formatDateTimeLabel(entry.time_in_at ?? entry.time_out_at)}</span>
+                                <span role="cell">{dashboardCluster?.name ?? "—"}</span>
+                                <span role="cell">{formatDateTimeLabel(entry.time_in_at)}</span>
+                                <span role="cell">{formatDateTimeLabel(entry.time_out_at)}</span>
+                                <span role="cell" className="attendance-tag-cell">
+                                  <span className={`member-status-tag ${historyTag ? "is-active" : ""}`}>{historyTag}</span>
+                                  <span className="btn attendance-tag-edit-button">Edit</span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <span className="attendance-detail-value">No attendance records match the selected date range.</span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="attendance-detail-value">No attendance history yet.</span>
+                  )}
                 </div>
               </div>
-            </div>
+            </section>
+          </div>
+        )}
+
+        {selectedMember && selectedAttendanceEntry && (
+          <div className="modal-overlay" role="presentation" onClick={() => { setSelectedAttendanceEntry(null); setAttendanceSaveError(""); }}>
+            <section className="modal-card attendance-edit-modal" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+              <header className="modal-header">
+                <div>
+                  <h3 className="modal-title">Edit Attendance Entry</h3>
+                  <p className="modal-subtitle">{selectedMember.fullname}</p>
+                </div>
+                <button type="button" className="btn secondary" onClick={() => { setSelectedAttendanceEntry(null); setAttendanceSaveError(""); }}>Close</button>
+              </header>
+              <div className="modal-body">
+                <div className="attendance-history-range-filter" role="group" aria-label="Edit attendance values">
+                  <label className="attendance-history-filter" htmlFor="coach-attendance-time-in"><span>Time In</span><input id="coach-attendance-time-in" type="datetime-local" value={attendanceEditForm.timeInAt} onChange={event => setAttendanceEditForm(curr => ({ ...curr, timeInAt: event.target.value }))} /></label>
+                  <label className="attendance-history-filter" htmlFor="coach-attendance-time-out"><span>Time Out</span><input id="coach-attendance-time-out" type="datetime-local" value={attendanceEditForm.timeOutAt} onChange={event => setAttendanceEditForm(curr => ({ ...curr, timeOutAt: event.target.value }))} /></label>
+                  <label className="attendance-history-filter" htmlFor="coach-attendance-tag">
+                    <span>Tag</span>
+                    <select id="coach-attendance-tag" value={attendanceEditForm.tag} onChange={event => setAttendanceEditForm(curr => ({ ...curr, tag: event.target.value }))}>
+                      <option value="">Select tag</option>
+                      {attendanceTagOptions.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+                    </select>
+                  </label>
+                  <label className="attendance-history-filter" htmlFor="coach-attendance-note"><span>Note</span><input id="coach-attendance-note" type="text" value={attendanceEditForm.note} onChange={event => setAttendanceEditForm(curr => ({ ...curr, note: event.target.value }))} /></label>
+                </div>
+                <div className="attendance-edit-actions">
+                  <button className="btn primary" type="button" disabled={isSavingAttendanceEdit} onClick={handleSaveTeamAttendanceEdit}>{isSavingAttendanceEdit ? "Saving..." : "Save Attendance"}</button>
+                  {attendanceSaveError && <span className="attendance-detail-value">{attendanceSaveError}</span>}
+                </div>
+              </div>
+            </section>
           </div>
         )}
 

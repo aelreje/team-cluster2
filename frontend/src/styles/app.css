@@ -2031,6 +2031,14 @@ body {
   background: #ffffff;
 }
 
+.attendance-history-filter select {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: #ffffff;
+}
+
 .attendance-history-list {
   display: grid;
   gap: 10px;
@@ -2126,6 +2134,58 @@ body {
   border-top: 1px solid #e5e7eb;
   color: #1f2937;
 }
+
+.employee-attendance-summary-row {
+  cursor: pointer;
+}
+
+.employee-attendance-summary-row:hover {
+  background: #f8fafc;
+}
+
+.team-attendance-employee-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.team-attendance-employee-cell small {
+  color: #67c0e4;
+  font-size: 12px;
+}
+
+.team-cluster-attendance-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.team-cluster-summary-card {
+  border: 1px solid #dbe2ea;
+  background: #f1f5ff;
+  border-radius: 10px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.team-cluster-summary-card span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.team-cluster-summary-card strong {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.attendance-details-modal {
+  width: min(1240px, 96vw);
+}
+
 .attendance-edit-modal {
   width: min(640px, 94vw);
 }
