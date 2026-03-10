@@ -4,6 +4,7 @@ import { saveDashboardAttendance } from "../api/attendance";
 import DashboardSidebar from "../components/DashboardSidebar";
 import MainDashboard from "./MainDashboard";
 import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighlights";
+import FilingCenterPanel from "../components/FilingCenterPanel";
 import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { resolveAttendanceMainTag } from "../utils/attendanceTags";
@@ -555,14 +556,7 @@ export default function EmployeeDashboard() {
               )}
 
               {activeNav === "My Filing Center" && (
-                <div className="employee-card">
-                  <div className="employee-card-header">
-                    <div className="employee-card-title">My Filing Center</div>
-                  </div>
-                  <div className="employee-card-body">
-                    <div className="empty-state">No filing records available yet.</div>
-                  </div>
-                </div>
+                <FilingCenterPanel />
               )}
 
               {!isAttendanceView && (

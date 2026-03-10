@@ -5,6 +5,7 @@ import MainDashboard from "./MainDashboard";
 import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
 import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighlights";
+import FilingCenterPanel from "../components/FilingCenterPanel";
 
 const myRequestHighlights = [
   { key: "totalRequests", label: "Total Requests", icon: "🗎", accentClass: "is-slate", value: "--", subValue: "N/A" },
@@ -562,8 +563,7 @@ const handleOpenRejectModal = cluster => {
           </section>
         ) : activeNav === "My Filing Center" ? (
           <section className="content">
-            <div className="section-title">My Filing Center</div>
-            <div className="empty-state">No filing records available yet.</div>
+            <FilingCenterPanel />
           </section>
         ) : (
           <section className="content">

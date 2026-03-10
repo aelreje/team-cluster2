@@ -4,6 +4,7 @@ import { parseSqlDateTime, saveDashboardAttendance } from "../api/attendance";
 import DashboardSidebar from "../components/DashboardSidebar";
 import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighlights";
 import MainDashboard from "./MainDashboard";
+import FilingCenterPanel from "../components/FilingCenterPanel";
 import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { resolveAttendanceMainTag } from "../utils/attendanceTags";
@@ -1056,6 +1057,7 @@ useEffect(() => {
 
   const isMyAttendanceView = activeNav === "Attendance" || activeNav === "My Attendance";
   const isMyRequestsView = activeNav === "My Requests";
+  const isFilingCenterView = activeNav === "My Filing Center";
   const attendanceViewTitle = activeNav === "Team Cluster Attendance" ? "Team Cluster Attendance" : "My Attendance";
 
   return (
@@ -1088,6 +1090,9 @@ useEffect(() => {
           </section>
         ) : isAttendanceView ? (
           <section className="content">
+            {isFilingCenterView ? (
+              <FilingCenterPanel />
+            ) : (
             <div className="employee-card employee-attendance-history-card">
               <div className="employee-card-header">
                 <div>
@@ -1117,6 +1122,7 @@ useEffect(() => {
                 )}
               </div>
             </div>
+            )}
           </section>
         ) : (
           <>

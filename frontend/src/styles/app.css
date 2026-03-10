@@ -2174,3 +2174,172 @@ body {
   gap: 10px;
   margin-top: 8px;
 }
+.filing-center-layout {
+  display: grid;
+  gap: 20px;
+}
+
+.filing-center-header h2 {
+  margin: 0;
+  font-size: 48px;
+  font-weight: 700;
+  color: #1a2f4c;
+}
+
+.filing-center-header p {
+  margin: 8px 0 0;
+  color: #5f7390;
+  font-size: 30px;
+}
+
+.filing-center-shell {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+.filing-center-tabs {
+  display: grid;
+  gap: 14px;
+}
+
+.filing-center-tab {
+  border: 0;
+  background: #edf2f8;
+  color: #476285;
+  border-radius: 14px;
+  padding: 16px 18px;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+  border-left: 4px solid transparent;
+}
+
+.filing-center-tab.is-active {
+  color: #0c66d6;
+  border-left-color: #2584f3;
+  background: #dbeeff;
+}
+
+.tab-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #d0dcf1;
+  display: grid;
+  place-items: center;
+}
+
+.filing-center-tab.is-active .tab-icon {
+  background: linear-gradient(180deg, #7f59ff, #3e7cf6);
+  color: #fff;
+}
+
+.filing-center-panel {
+  border: 1px solid #e4e9f1;
+  border-radius: 20px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.filing-center-panel-header {
+  padding: 22px 28px;
+  font-size: 34px;
+  font-weight: 700;
+  color: #13294a;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.filing-center-panel-body {
+  padding: 26px 28px 30px;
+  display: grid;
+  gap: 20px;
+}
+
+.filing-grid-two,
+.filing-grid-three {
+  display: grid;
+  gap: 18px;
+}
+
+.filing-grid-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.filing-grid-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.filing-field {
+  display: grid;
+  gap: 8px;
+}
+
+.filing-field span {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #90a1bb;
+}
+
+.filing-field input,
+.filing-field select,
+.filing-field textarea {
+  border: 1px solid #e2e8f0;
+  background: #f1f5fb;
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-size: 16px;
+  color: #223b5f;
+  font-family: inherit;
+}
+
+.filing-field textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+
+.filing-field-full {
+  grid-column: 1 / -1;
+}
+
+.filing-warning {
+  border: 1px solid #f0d9b8;
+  background: #fff5e8;
+  color: #b55417;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.filing-submit-btn {
+  border: 0;
+  border-radius: 14px;
+  background: #2480e6;
+  color: #fff;
+  padding: 14px 24px;
+  font-size: 20px;
+  font-weight: 700;
+  justify-self: start;
+  cursor: pointer;
+}
+
+@media (max-width: 1180px) {
+  .filing-center-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .filing-center-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 880px) {
+  .filing-grid-two,
+  .filing-grid-three,
+  .filing-center-tabs {
+    grid-template-columns: 1fr;
+  }
+}
