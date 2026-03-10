@@ -1516,6 +1516,99 @@ export default function CoachDashboard() {
                 </div>
               </div>
             )}
+
+            {isTeamClusterAttendanceView && selectedMember && (
+              <div className="modal-overlay" role="presentation" onClick={() => { setSelectedMember(null); setSelectedAttendanceEntry(null); setAttendanceSaveError(""); setHistoryDateStartFilter(""); setHistoryDateEndFilter(""); }}>
+                <section className="modal-card attendance-modal" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+                  <header className="modal-header">
+                    <div>
+                      <h3 className="modal-title">{selectedMember.fullname}</h3>
+                      <p className="modal-subtitle">Attendance details</p>
+                    </div>
+                    <button type="button" className="btn secondary" onClick={() => { setSelectedMember(null); setSelectedAttendanceEntry(null); setAttendanceSaveError(""); setHistoryDateStartFilter(""); setHistoryDateEndFilter(""); }}>
+                      Close
+                    </button>
+                  </header>
+                  <div className="modal-body attendance-modal-grid">
+                    <div className="attendance-detail-item attendance-detail-note">
+                      <span className="attendance-detail-label">Attendance History</span>
+                      {Array.isArray(selectedMember.attendance_history) && selectedMember.attendance_history.length > 0 ? (
+                        <>
+                          <div className="attendance-history-range-filter" role="group" aria-label="Filter attendance history by date range">
+                            <label className="attendance-history-filter" htmlFor="attendance-history-date-filter-start"><span>From</span><input id="attendance-history-date-filter-start" type="date" value={historyDateStartFilter} onChange={event => setHistoryDateStartFilter(event.target.value)} /></label>
+                            <label className="attendance-history-filter" htmlFor="attendance-history-date-filter-end"><span>To</span><input id="attendance-history-date-filter-end" type="date" value={historyDateEndFilter} onChange={event => setHistoryDateEndFilter(event.target.value)} /></label>
+                          </div>
+                          {attendanceHistoryEntries.length > 0 ? (
+                            <div className="employee-attendance-history-table" role="table" aria-label="Attendance history">
+                              <div className="employee-attendance-history-header" role="row">
+                                <span role="columnheader">Date</span><span role="columnheader">Cluster</span><span role="columnheader">Time In</span><span role="columnheader">Time Out</span><span role="columnheader">Tag</span>
+                              </div>
+                              {attendanceHistoryEntries.map((entry, index) => {
+                                const historyTag = getAttendanceHistoryTag(entry);
+                                return (
+                                  <button
+                                    key={entry.id ?? `${entry.time_in_at ?? entry.time_out_at ?? "history"}-${index}`}
+                                    type="button"
+                                    className="employee-attendance-history-row attendance-row-button"
+                                    role="row"
+                                    onClick={() => openAttendanceEditModal(entry)}
+                                  >
+                                    <span role="cell">{formatDateTimeLabel(entry.time_in_at ?? entry.time_out_at)}</span>
+                                    <span role="cell">{dashboardCluster?.name ?? "—"}</span>
+                                    <span role="cell">{formatDateTimeLabel(entry.time_in_at)}</span>
+                                    <span role="cell">{formatDateTimeLabel(entry.time_out_at)}</span>
+                                    <span role="cell" className="attendance-tag-cell">
+                                      <span className={`member-status-tag ${historyTag ? "is-active" : ""}`}>{historyTag}</span>
+                                      <span className="btn attendance-tag-edit-button">Edit</span>
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="attendance-detail-value">No attendance records match the selected date range.</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="attendance-detail-value">No attendance history yet.</span>
+                      )}
+                    </div>
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {isTeamClusterAttendanceView && selectedMember && selectedAttendanceEntry && (
+              <div className="modal-overlay" role="presentation" onClick={() => { setSelectedAttendanceEntry(null); setAttendanceSaveError(""); }}>
+                <section className="modal-card attendance-edit-modal" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+                  <header className="modal-header">
+                    <div>
+                      <h3 className="modal-title">Edit Attendance Entry</h3>
+                      <p className="modal-subtitle">{selectedMember.fullname}</p>
+                    </div>
+                    <button type="button" className="btn secondary" onClick={() => { setSelectedAttendanceEntry(null); setAttendanceSaveError(""); }}>Close</button>
+                  </header>
+                  <div className="modal-body">
+                    <div className="attendance-history-range-filter" role="group" aria-label="Edit attendance values">
+                      <label className="attendance-history-filter" htmlFor="coach-attendance-time-in"><span>Time In</span><input id="coach-attendance-time-in" type="datetime-local" value={attendanceEditForm.timeInAt} onChange={event => setAttendanceEditForm(curr => ({ ...curr, timeInAt: event.target.value }))} /></label>
+                      <label className="attendance-history-filter" htmlFor="coach-attendance-time-out"><span>Time Out</span><input id="coach-attendance-time-out" type="datetime-local" value={attendanceEditForm.timeOutAt} onChange={event => setAttendanceEditForm(curr => ({ ...curr, timeOutAt: event.target.value }))} /></label>
+                      <label className="attendance-history-filter" htmlFor="coach-attendance-tag">
+                        <span>Tag</span>
+                        <select id="coach-attendance-tag" value={attendanceEditForm.tag} onChange={event => setAttendanceEditForm(curr => ({ ...curr, tag: event.target.value }))}>
+                          <option value="">Select tag</option>
+                          {attendanceTagOptions.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+                        </select>
+                      </label>
+                      <label className="attendance-history-filter" htmlFor="coach-attendance-note"><span>Note</span><input id="coach-attendance-note" type="text" value={attendanceEditForm.note} onChange={event => setAttendanceEditForm(curr => ({ ...curr, note: event.target.value }))} /></label>
+                    </div>
+                    <div className="attendance-edit-actions">
+                      <button className="btn primary" type="button" disabled={isSavingAttendanceEdit} onClick={handleSaveTeamAttendanceEdit}>{isSavingAttendanceEdit ? "Saving..." : "Save Attendance"}</button>
+                      {attendanceSaveError && <span className="attendance-detail-value">{attendanceSaveError}</span>}
+                    </div>
+                  </div>
+                </section>
+              </div>
+            )}
           </section>
         ) : (
           <>
@@ -2147,99 +2240,6 @@ export default function CoachDashboard() {
                 </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {selectedMember && (
-          <div className="modal-overlay" role="presentation" onClick={() => { setSelectedMember(null); setSelectedAttendanceEntry(null); setAttendanceSaveError(""); setHistoryDateStartFilter(""); setHistoryDateEndFilter(""); }}>
-            <section className="modal-card attendance-modal" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
-              <header className="modal-header">
-                <div>
-                  <h3 className="modal-title">{selectedMember.fullname}</h3>
-                  <p className="modal-subtitle">Attendance details</p>
-                </div>
-                <button type="button" className="btn secondary" onClick={() => { setSelectedMember(null); setSelectedAttendanceEntry(null); setAttendanceSaveError(""); setHistoryDateStartFilter(""); setHistoryDateEndFilter(""); }}>
-                  Close
-                </button>
-              </header>
-              <div className="modal-body attendance-modal-grid">
-                <div className="attendance-detail-item attendance-detail-note">
-                  <span className="attendance-detail-label">Attendance History</span>
-                  {Array.isArray(selectedMember.attendance_history) && selectedMember.attendance_history.length > 0 ? (
-                    <>
-                      <div className="attendance-history-range-filter" role="group" aria-label="Filter attendance history by date range">
-                        <label className="attendance-history-filter" htmlFor="attendance-history-date-filter-start"><span>From</span><input id="attendance-history-date-filter-start" type="date" value={historyDateStartFilter} onChange={event => setHistoryDateStartFilter(event.target.value)} /></label>
-                        <label className="attendance-history-filter" htmlFor="attendance-history-date-filter-end"><span>To</span><input id="attendance-history-date-filter-end" type="date" value={historyDateEndFilter} onChange={event => setHistoryDateEndFilter(event.target.value)} /></label>
-                      </div>
-                      {attendanceHistoryEntries.length > 0 ? (
-                        <div className="employee-attendance-history-table" role="table" aria-label="Attendance history">
-                          <div className="employee-attendance-history-header" role="row">
-                            <span role="columnheader">Date</span><span role="columnheader">Cluster</span><span role="columnheader">Time In</span><span role="columnheader">Time Out</span><span role="columnheader">Tag</span>
-                          </div>
-                          {attendanceHistoryEntries.map((entry, index) => {
-                            const historyTag = getAttendanceHistoryTag(entry);
-                            return (
-                              <button
-                                key={entry.id ?? `${entry.time_in_at ?? entry.time_out_at ?? "history"}-${index}`}
-                                type="button"
-                                className="employee-attendance-history-row attendance-row-button"
-                                role="row"
-                                onClick={() => openAttendanceEditModal(entry)}
-                              >
-                                <span role="cell">{formatDateTimeLabel(entry.time_in_at ?? entry.time_out_at)}</span>
-                                <span role="cell">{dashboardCluster?.name ?? "—"}</span>
-                                <span role="cell">{formatDateTimeLabel(entry.time_in_at)}</span>
-                                <span role="cell">{formatDateTimeLabel(entry.time_out_at)}</span>
-                                <span role="cell" className="attendance-tag-cell">
-                                  <span className={`member-status-tag ${historyTag ? "is-active" : ""}`}>{historyTag}</span>
-                                  <span className="btn attendance-tag-edit-button">Edit</span>
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <span className="attendance-detail-value">No attendance records match the selected date range.</span>
-                      )}
-                    </>
-                  ) : (
-                    <span className="attendance-detail-value">No attendance history yet.</span>
-                  )}
-                </div>
-              </div>
-            </section>
-          </div>
-        )}
-
-        {selectedMember && selectedAttendanceEntry && (
-          <div className="modal-overlay" role="presentation" onClick={() => { setSelectedAttendanceEntry(null); setAttendanceSaveError(""); }}>
-            <section className="modal-card attendance-edit-modal" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
-              <header className="modal-header">
-                <div>
-                  <h3 className="modal-title">Edit Attendance Entry</h3>
-                  <p className="modal-subtitle">{selectedMember.fullname}</p>
-                </div>
-                <button type="button" className="btn secondary" onClick={() => { setSelectedAttendanceEntry(null); setAttendanceSaveError(""); }}>Close</button>
-              </header>
-              <div className="modal-body">
-                <div className="attendance-history-range-filter" role="group" aria-label="Edit attendance values">
-                  <label className="attendance-history-filter" htmlFor="coach-attendance-time-in"><span>Time In</span><input id="coach-attendance-time-in" type="datetime-local" value={attendanceEditForm.timeInAt} onChange={event => setAttendanceEditForm(curr => ({ ...curr, timeInAt: event.target.value }))} /></label>
-                  <label className="attendance-history-filter" htmlFor="coach-attendance-time-out"><span>Time Out</span><input id="coach-attendance-time-out" type="datetime-local" value={attendanceEditForm.timeOutAt} onChange={event => setAttendanceEditForm(curr => ({ ...curr, timeOutAt: event.target.value }))} /></label>
-                  <label className="attendance-history-filter" htmlFor="coach-attendance-tag">
-                    <span>Tag</span>
-                    <select id="coach-attendance-tag" value={attendanceEditForm.tag} onChange={event => setAttendanceEditForm(curr => ({ ...curr, tag: event.target.value }))}>
-                      <option value="">Select tag</option>
-                      {attendanceTagOptions.map(tag => <option key={tag} value={tag}>{tag}</option>)}
-                    </select>
-                  </label>
-                  <label className="attendance-history-filter" htmlFor="coach-attendance-note"><span>Note</span><input id="coach-attendance-note" type="text" value={attendanceEditForm.note} onChange={event => setAttendanceEditForm(curr => ({ ...curr, note: event.target.value }))} /></label>
-                </div>
-                <div className="attendance-edit-actions">
-                  <button className="btn primary" type="button" disabled={isSavingAttendanceEdit} onClick={handleSaveTeamAttendanceEdit}>{isSavingAttendanceEdit ? "Saving..." : "Save Attendance"}</button>
-                  {attendanceSaveError && <span className="attendance-detail-value">{attendanceSaveError}</span>}
-                </div>
-              </div>
-            </section>
           </div>
         )}
 
