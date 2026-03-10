@@ -8,6 +8,13 @@ import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { resolveAttendanceMainTag } from "../utils/attendanceTags";
 
+const myRequestHighlights = [
+  { key: "totalRequests", label: "Total Requests", icon: "🗎", accentClass: "is-slate", value: "--", subValue: "N/A" },
+  { key: "pendingRequests", label: "Pending", icon: "◷", accentClass: "is-blue", value: "--", subValue: "N/A" },
+  { key: "approvedRequests", label: "Approved", icon: "✓", accentClass: "is-green", value: "--", subValue: "N/A" },
+  { key: "rejectedRequests", label: "Rejected", icon: "✕", accentClass: "is-red", value: "--", subValue: "N/A" },
+];
+
 export default function EmployeeDashboard() {
   const navItems = ["Dashboard", "Team", "Attendance", "Schedule"];
   const attendanceNavItems = ["My Attendance", "My Requests", "My Filing Center"];
@@ -541,6 +548,7 @@ export default function EmployeeDashboard() {
                     <div className="employee-card-title">My Requests</div>
                   </div>
                   <div className="employee-card-body">
+                    <AttendanceHistoryHighlights highlights={myRequestHighlights} />
                     <div className="empty-state">No requests available yet.</div>
                   </div>
                 </div>

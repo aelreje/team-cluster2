@@ -1878,6 +1878,7 @@ body {
 .attendance-history-highlight-icon.is-green { background: #52c41a; }
 .attendance-history-highlight-icon.is-amber { background: #f59e0b; }
 .attendance-history-highlight-icon.is-blue { background: #1890ff; }
+.attendance-history-highlight-icon.is-red { background: #f5222d; }
 
 .attendance-history-highlight-value {
   color: #cbd5e1;

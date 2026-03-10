@@ -6,6 +6,13 @@ import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
 import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighlights";
 
+const myRequestHighlights = [
+  { key: "totalRequests", label: "Total Requests", icon: "🗎", accentClass: "is-slate", value: "--", subValue: "N/A" },
+  { key: "pendingRequests", label: "Pending", icon: "◷", accentClass: "is-blue", value: "--", subValue: "N/A" },
+  { key: "approvedRequests", label: "Approved", icon: "✓", accentClass: "is-green", value: "--", subValue: "N/A" },
+  { key: "rejectedRequests", label: "Rejected", icon: "✕", accentClass: "is-red", value: "--", subValue: "N/A" },
+];
+
 export default function AdminDashboard() {
   const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const workSetupOptions = ["Onsite", "Work From Home (WFH)"];
@@ -550,6 +557,7 @@ const handleOpenRejectModal = cluster => {
         ) : activeNav === "My Requests" ? (
           <section className="content">
             <div className="section-title">My Requests</div>
+            <AttendanceHistoryHighlights highlights={myRequestHighlights} />
             <div className="empty-state">No requests available yet.</div>
           </section>
         ) : activeNav === "My Filing Center" ? (

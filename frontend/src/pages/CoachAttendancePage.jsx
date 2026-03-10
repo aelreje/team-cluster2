@@ -58,6 +58,19 @@ const getTodayDateInputValue = () => {
   return `${year}-${month}-${day}`;
 };
 
+const myRequestHighlights = [
+  { key: "totalRequests", label: "Total Requests", icon: "🗎", accentClass: "is-slate", value: "--", subValue: "N/A" },
+  { key: "pendingRequests", label: "Pending", icon: "◷", accentClass: "is-blue", value: "--", subValue: "N/A" },
+  { key: "approvedRequests", label: "Approved", icon: "✓", accentClass: "is-green", value: "--", subValue: "N/A" },
+  { key: "rejectedRequests", label: "Rejected", icon: "✕", accentClass: "is-red", value: "--", subValue: "N/A" },
+];
+
+const parseAttendanceTabFromLocation = () => {
+  const tab = new URLSearchParams(window.location.search).get("tab");
+  if (tab === "my-requests") return "My Requests";
+  if (tab === "my-filing-center") return "My Filing Center";
+  return "My Attendance";
+};
 
 const toMinutes = (time, period) => {
   const [hourPart, minutePart] = String(time ?? "").split(":");
@@ -100,6 +113,7 @@ export default function CoachAttendancePage() {
   const dateTimeLabel = useLiveDateTime();
   const attendanceNavItems = ["My Attendance", "My Requests", "My Filing Center"];
   const [attendanceExpanded, setAttendanceExpanded] = useState(true);
+  const [activeAttendanceTab, setActiveAttendanceTab] = useState(parseAttendanceTabFromLocation);
   const navItems = [
     { label: "Dashboard", onClick: () => navigate("/coach") },
     { label: "Team", onClick: () => navigate("/coach") },
@@ -110,8 +124,16 @@ export default function CoachAttendancePage() {
       onClick: () => setAttendanceExpanded(prev => !prev),
       children: attendanceNavItems.map(label => ({
         label,
-        active: label === "My Attendance",
-        onClick: () => navigate("/coach/attendance")
+        active: label === activeAttendanceTab,
+        onClick: () => {
+          const tabPath =
+            label === "My Requests"
+              ? "/coach/attendance?tab=my-requests"
+              : label === "My Filing Center"
+                ? "/coach/attendance?tab=my-filing-center"
+                : "/coach/attendance";
+          navigate(tabPath);
+        }
       }))
     },
     { label: "Schedule", onClick: () => navigate("/coach") }
@@ -223,6 +245,14 @@ export default function CoachAttendancePage() {
     loadAttendance();
   }, [loadAttendance]);
    
+  useEffect(() => {
+    const handleRouteChange = () => {
+      setActiveAttendanceTab(parseAttendanceTabFromLocation());
+    };
+
+    window.addEventListener("popstate", handleRouteChange);
+    return () => window.removeEventListener("popstate", handleRouteChange);
+  }, []);
 
   const filteredAttendanceRows = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -492,8 +522,8 @@ export default function CoachAttendancePage() {
       <main className="main">
         <header className="topbar">
           <div>
-            <h2>ATTENDANCE</h2>
-            <div className="nav-item">Team Coach Attendance Page</div>
+            <h2>{activeAttendanceTab.toUpperCase()}</h2>
+            <div className="nav-item">{activeAttendanceTab === "My Attendance" ? "Team Coach Attendance Page" : "Team Coach Attendance"}</div>
           </div>
           <div className="toolbar">
             <span className="datetime">{dateTimeLabel}</span>
@@ -502,6 +532,23 @@ export default function CoachAttendancePage() {
         </header>
 
         <section className="content">
+          {activeAttendanceTab === "My Requests" && (
+            <>
+              <div className="section-title">My Requests</div>
+              <AttendanceHistoryHighlights highlights={myRequestHighlights} />
+              <div className="empty-state">No requests available yet.</div>
+            </>
+          )}
+
+          {activeAttendanceTab === "My Filing Center" && (
+            <>
+              <div className="section-title">My Filing Center</div>
+              <div className="empty-state">No filing records available yet.</div>
+            </>
+          )}
+
+          {activeAttendanceTab === "My Attendance" && (
+            <>
           {loading && <div className="modal-text">Loading attendance records...</div>}
           {!loading && error && <div className="error">{error}</div>}
 
@@ -771,6 +818,8 @@ export default function CoachAttendancePage() {
                   </section>
                 </div>
               )}
+            </>
+          )}
             </>
           )}
         </section>
