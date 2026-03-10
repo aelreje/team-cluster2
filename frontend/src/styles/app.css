@@ -2343,3 +2343,138 @@ body {
     grid-template-columns: 1fr;
   }
 }
+.offline-data-panel {
+  border: 1px solid #d9dde3;
+  border-radius: 12px;
+  background: #f9fafb;
+  overflow: hidden;
+}
+
+.offline-data-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 14px;
+}
+
+.offline-data-panel-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.offline-data-panel-title {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1;
+  color: #6b7280;
+}
+
+.offline-pill {
+  font-size: 20px;
+  font-weight: 600;
+  color: #c08497;
+  background: #f3e8ee;
+  border-radius: 10px;
+  padding: 4px 10px;
+}
+
+.offline-data-panel-controls {
+  display: flex;
+  gap: 14px;
+}
+
+.offline-control-btn,
+.offline-search-input {
+  min-width: 220px;
+  border: 1px solid #d4d9e1;
+  background: #f3f4f6;
+  color: #b5bcc8;
+  font-size: 34px;
+  padding: 14px 18px;
+  border-radius: 2px;
+}
+
+.offline-control-btn:disabled {
+  cursor: not-allowed;
+}
+
+.offline-search-input {
+  min-width: 390px;
+}
+
+.offline-data-table-header {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  background: #e6e7eb;
+  border-top: 1px solid #e2e8f0;
+  color: #6b7280;
+  font-size: 36px;
+  padding: 24px 16px;
+}
+
+.offline-data-table-attendance .offline-data-table-header {
+  grid-template-columns: 1.1fr repeat(7, minmax(0, 1fr));
+}
+
+.offline-data-table-requests .offline-data-table-header {
+  grid-template-columns: 1fr 1.2fr 1fr 1.5fr 0.8fr 0.8fr;
+}
+
+.offline-data-table-empty {
+  display: grid;
+  place-items: center;
+  min-height: 540px;
+  padding: 24px;
+  color: #c6cad1;
+  text-align: center;
+}
+
+.offline-data-empty-icon {
+  font-size: 64px;
+  line-height: 1;
+  opacity: 0.45;
+}
+
+.offline-data-empty-title {
+  margin: 8px 0 0;
+  font-size: 46px;
+  font-weight: 700;
+}
+
+.offline-data-empty-subtitle {
+  margin: 2px 0 0;
+  font-size: 36px;
+  color: #d1d5db;
+  font-style: italic;
+}
+
+@media (max-width: 1200px) {
+  .offline-data-panel-title {
+    font-size: 26px;
+  }
+
+  .offline-pill {
+    font-size: 13px;
+  }
+
+  .offline-control-btn,
+  .offline-search-input {
+    min-width: 180px;
+    font-size: 18px;
+  }
+
+  .offline-data-table-header {
+    font-size: 18px;
+  }
+
+  .offline-data-empty-title {
+    font-size: 30px;
+  }
+
+  .offline-data-empty-subtitle {
+    font-size: 20px;
+  }
+}

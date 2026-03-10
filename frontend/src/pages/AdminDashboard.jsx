@@ -6,6 +6,7 @@ import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
 import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighlights";
 import FilingCenterPanel from "../components/FilingCenterPanel";
+import DataPanel from "../components/DataPanel";
 
 const myRequestHighlights = [
   { key: "totalRequests", label: "Total Requests", icon: "🗎", accentClass: "is-slate", value: "--", subValue: "N/A" },
@@ -528,38 +529,12 @@ const handleOpenRejectModal = cluster => {
         ) : activeNav === "Attendance" ? (
           <section className="content">
             <div className="section-title">Coach Attendance</div>
-            <AttendanceHistoryHighlights />
-            <label className="attendance-date" htmlFor="admin-coach-attendance-date">
-              <span>Date</span>
-              <input id="admin-coach-attendance-date" type="date" value={attendanceDate} onChange={event => setAttendanceDate(event.target.value)} />
-            </label>
-            {coachAttendance.length === 0 ? (
-              <div className="empty-state">No coach attendance records for selected date.</div>
-            ) : (
-              <div className="table-card">
-                <div className="table-header">
-                  <div>Coach</div><div>Cluster</div><div>Time In</div><div>Time Out</div><div>Tag</div><div>Action</div>
-                </div>
-                {coachAttendance.map(row => (
-                  <div key={`${row.cluster_id}-${row.coach_id}`} className="table-row">
-                    <div className="table-cell">{row.coach_name}</div>
-                    <div className="table-cell">{row.cluster_name}</div>
-                    <div className="table-cell">{row.time_in_at ?? "—"}</div>
-                    <div className="table-cell">{row.time_out_at ?? "—"}</div>
-                    <div className="table-cell">{row.attendance_tag ?? "—"}</div>
-                    <div className="table-cell">
-                      <button className="btn" type="button" disabled={!row.attendance_id} onClick={() => openAttendanceEdit(row)}>Edit</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <DataPanel type="attendance" />
           </section>
         ) : activeNav === "My Requests" ? (
           <section className="content">
             <div className="section-title">My Requests</div>
-            <AttendanceHistoryHighlights highlights={myRequestHighlights} />
-            <div className="empty-state">No requests available yet.</div>
+            <DataPanel type="requests" />
           </section>
         ) : activeNav === "My Filing Center" ? (
           <section className="content">

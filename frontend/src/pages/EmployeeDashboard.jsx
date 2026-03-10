@@ -5,6 +5,7 @@ import DashboardSidebar from "../components/DashboardSidebar";
 import MainDashboard from "./MainDashboard";
 import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighlights";
 import FilingCenterPanel from "../components/FilingCenterPanel";
+import DataPanel from "../components/DataPanel";
 import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { resolveAttendanceMainTag } from "../utils/attendanceTags";
@@ -483,62 +484,10 @@ export default function EmployeeDashboard() {
               {activeNav === "My Attendance" && (
                 <div className="employee-card">
                   <div className="employee-card-header">
-                    <div className="employee-card-title">Attendance History</div>
+                    <div className="employee-card-title">My Attendance</div>
                   </div>
                   <div className="employee-card-body">
-                    <AttendanceHistoryHighlights />
-                    {attendanceHistory.length === 0 ? (
-                      <div className="empty-state">No attendance records yet.</div>
-                    ) : (
-                      <>
-                        <div className="attendance-history-range-filter" role="group" aria-label="Filter attendance history by date range">
-                          <label className="attendance-history-filter" htmlFor="employee-attendance-history-date-filter-start">
-                            <span>From</span>
-                            <input
-                              id="employee-attendance-history-date-filter-start"
-                              type="date"
-                              value={historyDateStartFilter}
-                              onChange={event => setHistoryDateStartFilter(event.target.value)}
-                            />
-                          </label>
-                          <label className="attendance-history-filter" htmlFor="employee-attendance-history-date-filter-end">
-                            <span>To</span>
-                            <input
-                              id="employee-attendance-history-date-filter-end"
-                              type="date"
-                              value={historyDateEndFilter}
-                              onChange={event => setHistoryDateEndFilter(event.target.value)}
-                            />
-                          </label>
-                        </div>
-                        {filteredAttendanceHistory.length > 0 ? (
-                          <div className="employee-attendance-history-table" role="table" aria-label="Attendance history">
-                            <div className="employee-attendance-history-header" role="row">
-                              <span role="columnheader">Date</span>
-                              <span role="columnheader">Cluster</span>
-                              <span role="columnheader">Time In</span>
-                              <span role="columnheader">Time Out</span>
-                              <span role="columnheader">Tag</span>
-                            </div>
-                            {filteredAttendanceHistory.map(item => (
-                              <div key={item.id} className="employee-attendance-history-row" role="row">
-                                <span role="cell">{formatDateTimeLabel(item.time_in_at ?? item.updated_at)}</span>
-                                <span role="cell">{item.cluster_name ?? "—"}</span>
-                                <span role="cell">{formatDateTimeLabel(item.time_in_at)}</span>
-                                <span role="cell">{formatDateTimeLabel(item.time_out_at)}</span>
-                                <span role="cell">
-                                  <span className={`member-status-tag ${item.tag ? "is-active" : ""}`}>
-                                    {item.tag ?? "Pending"}
-                                  </span>
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="empty-state">No attendance records match the selected date range.</div>
-                        )}
-                      </>
-                    )}
+                    <DataPanel type="attendance" />
                   </div>
                 </div>
                  )}
@@ -549,8 +498,7 @@ export default function EmployeeDashboard() {
                     <div className="employee-card-title">My Requests</div>
                   </div>
                   <div className="employee-card-body">
-                    <AttendanceHistoryHighlights highlights={myRequestHighlights} />
-                    <div className="empty-state">No requests available yet.</div>
+                    <DataPanel type="requests" />
                   </div>
                 </div>
               )}

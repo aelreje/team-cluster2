@@ -5,6 +5,7 @@ import DashboardSidebar from "../components/DashboardSidebar";
 import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighlights";
 import MainDashboard from "./MainDashboard";
 import FilingCenterPanel from "../components/FilingCenterPanel";
+import DataPanel from "../components/DataPanel";
 import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { resolveAttendanceMainTag } from "../utils/attendanceTags";
@@ -1213,11 +1214,8 @@ useEffect(() => {
                 </div>
               </div>
               <div className="employee-card-body">
-                {isMyAttendanceView && <AttendanceHistoryHighlights />}
-                {isMyRequestsView && <AttendanceHistoryHighlights highlights={myRequestHighlights} />}
-
                 {isMyRequestsView ? (
-                  <div className="empty-state">No requests available yet.</div>
+                  <DataPanel type="requests" />
                 ) : isTeamClusterAttendanceView ? (
                   <>
                     {activeMembers.length === 0 ? (
@@ -1285,18 +1283,7 @@ useEffect(() => {
                     )}
                   </>
                 ) : (
-                  <div className="employee-attendance-history-table" role="table" aria-label="Coach attendance snapshot">
-                    <div className="employee-attendance-history-header" role="row">
-                      <span role="columnheader">Time In</span>
-                      <span role="columnheader">Time Out</span>
-                      <span role="columnheader">Tag</span>
-                    </div>
-                    <div className="employee-attendance-history-row" role="row">
-                      <span role="cell">{attendanceLog.timeInAt ? attendanceLog.timeInAt.toLocaleString() : "—"}</span>
-                      <span role="cell">{attendanceLog.timeOutAt ? attendanceLog.timeOutAt.toLocaleString() : "—"}</span>
-                      <span role="cell">{coachAttendanceTag ?? "Pending"}</span>
-                    </div>
-                  </div>
+                  <DataPanel type="attendance" />
                 )}
               </div>
             </div>
