@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "../api/api";
 import { saveDashboardAttendance } from "../api/attendance";
 import DashboardSidebar from "../components/DashboardSidebar";
@@ -51,8 +51,6 @@ export default function EmployeeDashboard() {
     tag: null
   });
   const [attendanceHistory, setAttendanceHistory] = useState([]);
-  const [historyDateStartFilter, setHistoryDateStartFilter] = useState("");
-  const [historyDateEndFilter, setHistoryDateEndFilter] = useState("");
   const activeCluster = data[0];
   const dateTimeLabel = useLiveDateTime();
   const { user } = useCurrentUser();
@@ -395,22 +393,6 @@ export default function EmployeeDashboard() {
     });
   }, []);
 
-  const filteredAttendanceHistory = useMemo(() => {
-    if (!historyDateStartFilter && !historyDateEndFilter) return attendanceHistory;
-
-    const activeStartDate = historyDateStartFilter || null;
-    const activeEndDate = historyDateEndFilter || null;
-
-    return attendanceHistory.filter(item => {
-      const entryDate = toDateInputValue(item.time_in_at ?? item.time_out_at ?? item.updated_at);
-      if (!entryDate) return false;
-
-      if (activeStartDate && entryDate < activeStartDate) return false;
-      if (activeEndDate && entryDate > activeEndDate) return false;
-      return true;
-    });
-  }, [attendanceHistory, historyDateEndFilter, historyDateStartFilter]);
-
   const handleLogout = async () => {
     try {
       await apiFetch("auth/logout.php", { method: "POST" });
@@ -488,7 +470,7 @@ export default function EmployeeDashboard() {
                   </div>
                   <div className="employee-card-body">
                     <AttendanceHistoryHighlights />
-                    <DataPanel type="attendance" />
+                    <DataPanel type="attendance" records={attendanceHistory} />
                   </div>
                 </div>
                  )}

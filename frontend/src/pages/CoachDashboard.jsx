@@ -70,6 +70,7 @@ export default function CoachDashboard() {
   const [activeMembersError, setActiveMembersError] = useState("");
   const [confirmState, setConfirmState] = useState(null);
   const [attendanceLog, setAttendanceLog] = useState({ timeInAt: null, timeOutAt: null, tag: null });
+  const [coachAttendanceHistory, setCoachAttendanceHistory] = useState([]);
   const [teamMemberAttendanceFilter, setTeamMemberAttendanceFilter] = useState("");
   const [teamAttendanceDateStartFilter, setTeamAttendanceDateStartFilter] = useState("");
   const [teamAttendanceDateEndFilter, setTeamAttendanceDateEndFilter] = useState("");
@@ -541,6 +542,7 @@ useEffect(() => {
       try {
         const history = await apiFetch("api/coach_attendance_history.php");
         const records = Array.isArray(history) ? history : [];
+        setCoachAttendanceHistory(records);
         const activeRecord = records.find(entry => entry.time_in_at && !entry.time_out_at) ?? records[0] ?? null;
         setAttendanceLog({
           timeInAt: parseSqlDateTime(activeRecord?.time_in_at ?? null),
@@ -548,6 +550,7 @@ useEffect(() => {
           tag: activeRecord?.tag ?? null,
         });
       } catch {
+        setCoachAttendanceHistory([]);
         setAttendanceLog({ timeInAt: null, timeOutAt: null, tag: null });
       }
     };
@@ -564,6 +567,8 @@ useEffect(() => {
     });
 
     setAttendanceLog(savedAttendance);
+    const history = await apiFetch("api/coach_attendance_history.php");
+    setCoachAttendanceHistory(Array.isArray(history) ? history : []);
   };
 
   const handleCoachTimeIn = async () => {
@@ -1288,7 +1293,7 @@ useEffect(() => {
                 ) : (
                   <>
                     <AttendanceHistoryHighlights />
-                    <DataPanel type="attendance" />
+                    <DataPanel type="attendance" records={coachAttendanceHistory} />
                   </>
                 )}
               </div>

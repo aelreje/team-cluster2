@@ -530,7 +530,15 @@ const handleOpenRejectModal = cluster => {
           <section className="content">
             <div className="section-title">Coach Attendance</div>
             <AttendanceHistoryHighlights />
-            <DataPanel type="attendance" />
+            <DataPanel
+              type="attendance"
+              records={coachAttendance}
+              personField="employee_name"
+              personLabel="Coach"
+              onEditRow={openAttendanceEdit}
+              externalDateFilter={attendanceDate}
+              onExternalDateFilterChange={setAttendanceDate}
+            />
           </section>
         ) : activeNav === "My Requests" ? (
           <section className="content">
