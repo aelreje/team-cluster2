@@ -44,10 +44,28 @@ $employeeColumns = hasTable($conn, 'employees') ? getColumns($conn, 'employees')
 $requestEmployeeReference = getClusterMemberEmployeeReference($conn);
 $clusterIdColumn = in_array('id', $clusterColumns, true) ? 'id' : 'cluster_id';
 $clusterOwnerColumn = in_array('coach_id', $clusterColumns, true) ? 'coach_id' : 'user_id';
+$sessionUserId = (int)($_SESSION['user']['id'] ?? 0);
 
 $usersIdColumn = in_array('id', $userColumns, true) ? 'id' : (in_array('user_id', $userColumns, true) ? 'user_id' : null);
 $userDisplayColumn = in_array('fullname', $userColumns, true) ? 'fullname' : (in_array('username', $userColumns, true) ? 'username' : null);
 $canJoinEmployees = in_array('user_id', $employeeColumns, true) && in_array('employee_id', $employeeColumns, true);
+
+$currentEmployeeId = $sessionUserId;
+if ($canJoinEmployees) {
+    $employeeStmt = $conn->prepare("SELECT employee_id FROM employees WHERE user_id = ? LIMIT 1");
+    if ($employeeStmt) {
+        $employeeStmt->bind_param('i', $sessionUserId);
+        $employeeStmt->execute();
+        $employeeResult = $employeeStmt->get_result();
+        if ($employeeResult && $employeeResult->num_rows > 0) {
+            $currentEmployeeId = (int)$employeeResult->fetch_assoc()['employee_id'];
+        }
+    }
+}
+
+$excludeRequesterCondition = $requestEmployeeReference === 'users'
+    ? "req.employee_id <> $sessionUserId"
+    : "req.employee_id <> $currentEmployeeId";
 
 $requestEmployeeExpr = 'req.employee_id';
 $employeeJoinSql = '';
@@ -70,7 +88,7 @@ if ($usersIdColumn !== null && $userDisplayColumn !== null) {
 
 $items = [];
 
-$loadRequests = function (string $table, string $idColumn, string $typeColumn, string $detailsColumn, string $scheduleExpr, string $alias, string $defaultType) use ($conn, $clusterIdColumn, $clusterOwnerColumn, $requestEmployeeExpr, $employeeJoinSql, $userJoinSql, $employeeNameExpr, &$items) {
+$loadRequests = function (string $table, string $idColumn, string $typeColumn, string $detailsColumn, string $scheduleExpr, string $alias, string $defaultType) use ($conn, $clusterIdColumn, $clusterOwnerColumn, $requestEmployeeExpr, $employeeJoinSql, $userJoinSql, $employeeNameExpr, $excludeRequesterCondition, &$items) {
     $sql = "SELECT DISTINCT
                 req.$idColumn AS source_id,
                 req.created_at AS filed_at,
@@ -85,10 +103,11 @@ $loadRequests = function (string $table, string $idColumn, string $typeColumn, s
             FROM $table req
             $employeeJoinSql
             LEFT JOIN cluster_members cm ON cm.employee_id = $requestEmployeeExpr
-            INNER JOIN clusters c ON (c.$clusterIdColumn = cm.cluster_id OR c.$clusterOwnerColumn = req.employee_id)
+            LEFT JOIN clusters c ON (c.$clusterIdColumn = cm.cluster_id OR c.$clusterOwnerColumn = req.employee_id)
+                AND c.status = 'active'
             $userJoinSql
-            WHERE c.status = 'active'
-              AND LOWER(COALESCE(req.status, '')) = 'endorsed'";
+            WHERE LOWER(COALESCE(req.status, '')) = 'endorsed'
+              AND $excludeRequesterCondition";
 
     $res = $conn->query($sql);
     if (!$res) {
