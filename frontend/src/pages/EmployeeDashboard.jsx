@@ -6,16 +6,11 @@ import MainDashboard from "./MainDashboard";
 import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighlights";
 import FilingCenterPanel from "../components/FilingCenterPanel";
 import DataPanel from "../components/DataPanel";
+import { buildRequestHighlights, fetchMyRequests } from "../api/requests";
 import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { resolveAttendanceMainTag } from "../utils/attendanceTags";
 
-const myRequestHighlights = [
-  { key: "totalRequests", label: "Total Requests", icon: "🗎", accentClass: "is-slate", value: "--", subValue: "N/A" },
-  { key: "pendingRequests", label: "Pending", icon: "◷", accentClass: "is-blue", value: "--", subValue: "N/A" },
-  { key: "approvedRequests", label: "Approved", icon: "✓", accentClass: "is-green", value: "--", subValue: "N/A" },
-  { key: "rejectedRequests", label: "Rejected", icon: "✕", accentClass: "is-red", value: "--", subValue: "N/A" },
-];
 
 export default function EmployeeDashboard() {
   const navItems = ["Dashboard", "Team", "Attendance", "Schedule"];
@@ -51,6 +46,7 @@ export default function EmployeeDashboard() {
     tag: null
   });
   const [attendanceHistory, setAttendanceHistory] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
   const activeCluster = data[0];
   const dateTimeLabel = useLiveDateTime();
   const { user } = useCurrentUser();
@@ -391,7 +387,14 @@ export default function EmployeeDashboard() {
     apiFetch("api/employee_attendance_history.php").then(response => {
       setAttendanceHistory(response);
     });
+
+    fetchMyRequests().then(response => {
+      setMyRequests(Array.isArray(response) ? response : []);
+    }).catch(() => setMyRequests([]));
   }, []);
+
+
+  const myRequestHighlights = buildRequestHighlights(myRequests);
 
   const handleLogout = async () => {
     try {
@@ -482,13 +485,13 @@ export default function EmployeeDashboard() {
                   </div>
                   <div className="employee-card-body">
                     <AttendanceHistoryHighlights highlights={myRequestHighlights} />
-                    <DataPanel type="requests" />
+                    <DataPanel type="requests" records={myRequests} />
                   </div>
                 </div>
               )}
 
               {activeNav === "My Filing Center" && (
-                <FilingCenterPanel />
+                <FilingCenterPanel onSubmitted={() => fetchMyRequests().then(response => setMyRequests(Array.isArray(response) ? response : [])).catch(() => setMyRequests([]))} />
               )}
 
               {!isAttendanceView && (

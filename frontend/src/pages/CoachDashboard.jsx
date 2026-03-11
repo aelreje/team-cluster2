@@ -6,16 +6,11 @@ import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighligh
 import MainDashboard from "./MainDashboard";
 import FilingCenterPanel from "../components/FilingCenterPanel";
 import DataPanel from "../components/DataPanel";
+import { buildRequestHighlights, fetchMyRequests } from "../api/requests";
 import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { resolveAttendanceMainTag } from "../utils/attendanceTags";
 
-const myRequestHighlights = [
-  { key: "totalRequests", label: "Total Requests", icon: "🗎", accentClass: "is-slate", value: "--", subValue: "N/A" },
-  { key: "pendingRequests", label: "Pending", icon: "◷", accentClass: "is-blue", value: "--", subValue: "N/A" },
-  { key: "approvedRequests", label: "Approved", icon: "✓", accentClass: "is-green", value: "--", subValue: "N/A" },
-  { key: "rejectedRequests", label: "Rejected", icon: "✕", accentClass: "is-red", value: "--", subValue: "N/A" }
-];
 
 export default function CoachDashboard() {
   const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -71,6 +66,7 @@ export default function CoachDashboard() {
   const [confirmState, setConfirmState] = useState(null);
   const [attendanceLog, setAttendanceLog] = useState({ timeInAt: null, timeOutAt: null, tag: null });
   const [coachAttendanceHistory, setCoachAttendanceHistory] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
   const [teamMemberAttendanceFilter, setTeamMemberAttendanceFilter] = useState("");
   const [teamAttendanceDateStartFilter, setTeamAttendanceDateStartFilter] = useState("");
   const [teamAttendanceDateEndFilter, setTeamAttendanceDateEndFilter] = useState("");
@@ -118,6 +114,12 @@ export default function CoachDashboard() {
       setActiveNav("Attendance");
       window.history.replaceState({}, "", "/coach");
     }
+  }, []);
+
+  useEffect(() => {
+    fetchMyRequests().then(response => {
+      setMyRequests(Array.isArray(response) ? response : []);
+    }).catch(() => setMyRequests([]));
   }, []);
 
   const normalizeSchedule = schedule => {
@@ -1107,6 +1109,7 @@ useEffect(() => {
   const isMyAttendanceView = activeNav === "Attendance" || activeNav === "My Attendance";
   const isTeamClusterAttendanceView = activeNav === "Team Cluster Attendance";
   const isMyRequestsView = activeNav === "My Requests";
+  const myRequestHighlights = buildRequestHighlights(myRequests);
   const isFilingCenterView = activeNav === "My Filing Center";
   const attendanceViewTitle = activeNav === "Team Cluster Attendance" ? "Team Cluster Attendance" : "My Attendance";
   const selectedTeamMember = activeMembers.find(member => String(member.id) === String(teamMemberAttendanceFilter)) ?? null;
@@ -1205,7 +1208,7 @@ useEffect(() => {
         ) : isAttendanceView ? (
           <section className="content">
             {isFilingCenterView ? (
-              <FilingCenterPanel />
+              <FilingCenterPanel onSubmitted={() => fetchMyRequests().then(response => setMyRequests(Array.isArray(response) ? response : [])).catch(() => setMyRequests([]))} />
             ) : (
             <div className="employee-card employee-attendance-history-card">
               <div className="employee-card-header">
@@ -1222,7 +1225,7 @@ useEffect(() => {
                 {isMyRequestsView ? (
                   <>
                     <AttendanceHistoryHighlights highlights={myRequestHighlights} />
-                    <DataPanel type="requests" />
+                    <DataPanel type="requests" records={myRequests} />
                   </>
                 ) : isTeamClusterAttendanceView ? (
                   <>

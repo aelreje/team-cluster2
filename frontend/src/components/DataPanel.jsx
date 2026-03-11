@@ -57,6 +57,16 @@ export default function DataPanel({
   const [dateEndFilter, setDateEndFilter] = useState("");
 
   const filteredRecords = useMemo(() => {
+    if (type === "requests") {
+      return records.filter(item => {
+        const haystack = [item.request_type, item.details, item.status, item.schedule_period]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return !searchQuery || haystack.includes(searchQuery.toLowerCase());
+      });
+    }
+
     if (type !== "attendance") return [];
 
     return records.filter(item => {
@@ -133,6 +143,44 @@ export default function DataPanel({
           </div>
         )) : (
           <div className="empty-state">No attendance records match the selected filters.</div>
+        )}
+      </div>
+    );
+  }
+
+  if (type === "requests") {
+    return (
+      <div className="employee-attendance-history-table" role="table" aria-label={config.title}>
+        <div className="attendance-history-range-filter" role="group" aria-label="Filter requests">
+          <label className="attendance-history-filter" style={{ minWidth: "280px" }}>
+            <span>Search</span>
+            <input
+              type="text"
+              value={searchQuery}
+              placeholder={config.searchPlaceholder}
+              onChange={event => setSearchQuery(event.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="employee-attendance-history-header" role="row">
+          <span role="columnheader">Date Filed</span>
+          <span role="columnheader">Request Type</span>
+          <span role="columnheader">Details</span>
+          <span role="columnheader">Schedule / Period</span>
+          <span role="columnheader">Status</span>
+        </div>
+
+        {filteredRecords.length > 0 ? filteredRecords.map(item => (
+          <div key={item.id} className="employee-attendance-history-row" role="row">
+            <span role="cell">{formatDateTimeLabel(item.date_filed)}</span>
+            <span role="cell">{item.request_type ?? "—"}</span>
+            <span role="cell">{item.details ?? "—"}</span>
+            <span role="cell">{item.schedule_period ?? "—"}</span>
+            <span role="cell">{item.status ?? "Pending"}</span>
+          </div>
+        )) : (
+          <div className="empty-state">No requests found.</div>
         )}
       </div>
     );

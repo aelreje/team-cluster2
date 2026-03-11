@@ -7,13 +7,8 @@ import useCurrentUser from "../hooks/useCurrentUser";
 import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighlights";
 import FilingCenterPanel from "../components/FilingCenterPanel";
 import DataPanel from "../components/DataPanel";
+import { buildRequestHighlights, fetchMyRequests } from "../api/requests";
 
-const myRequestHighlights = [
-  { key: "totalRequests", label: "Total Requests", icon: "🗎", accentClass: "is-slate", value: "--", subValue: "N/A" },
-  { key: "pendingRequests", label: "Pending", icon: "◷", accentClass: "is-blue", value: "--", subValue: "N/A" },
-  { key: "approvedRequests", label: "Approved", icon: "✓", accentClass: "is-green", value: "--", subValue: "N/A" },
-  { key: "rejectedRequests", label: "Rejected", icon: "✕", accentClass: "is-red", value: "--", subValue: "N/A" },
-];
 
 export default function AdminDashboard() {
   const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -43,6 +38,7 @@ export default function AdminDashboard() {
   const [rejectError, setRejectError] = useState("");
   const [isSubmittingReject, setIsSubmittingReject] = useState(false);
   const [coachAttendance, setCoachAttendance] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
   const [managingScheduleCluster, setManagingScheduleCluster] = useState(null);
   const [scheduleModalMessage, setScheduleModalMessage] = useState("");
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
@@ -205,6 +201,12 @@ export default function AdminDashboard() {
     const interval = setInterval(fetchClusters, 5000);
     return () => clearInterval(interval);
   }, [fetchClusters]);
+
+  useEffect(() => {
+    fetchMyRequests().then(response => {
+      setMyRequests(Array.isArray(response) ? response : []);
+    }).catch(() => setMyRequests([]));
+  }, []);
 
   useEffect(() => {
     if (activeNav !== "Attendance") return;
@@ -441,6 +443,8 @@ const handleOpenRejectModal = cluster => {
     }
   };
 
+  const myRequestHighlights = buildRequestHighlights(myRequests);
+
   const formatDate = dateString => {
     if (!dateString) return "—";
     const parsed = new Date(dateString);
@@ -544,11 +548,11 @@ const handleOpenRejectModal = cluster => {
           <section className="content">
             <div className="section-title">My Requests</div>
             <AttendanceHistoryHighlights highlights={myRequestHighlights} />
-            <DataPanel type="requests" />
+            <DataPanel type="requests" records={myRequests} />
           </section>
         ) : activeNav === "My Filing Center" ? (
           <section className="content">
-            <FilingCenterPanel />
+            <FilingCenterPanel onSubmitted={() => fetchMyRequests().then(response => setMyRequests(Array.isArray(response) ? response : [])).catch(() => setMyRequests([]))} />
           </section>
         ) : (
           <section className="content">

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { submitRequest } from "../api/requests";
 
 const filingTabs = [
   { key: "leave", label: "File Leave", icon: "🗓" },
@@ -6,15 +7,80 @@ const filingTabs = [
   { key: "dispute", label: "Attendance Dispute", icon: "!" }
 ];
 
-export default function FilingCenterPanel() {
+export default function FilingCenterPanel({ onSubmitted = null }) {
   const [activeTab, setActiveTab] = useState("leave");
   const [disputeType, setDisputeType] = useState("Time Correction");
+  const [leaveType, setLeaveType] = useState("Sick Leave");
+  const [leaveStartDate, setLeaveStartDate] = useState("");
+  const [leaveEndDate, setLeaveEndDate] = useState("");
+  const [otType, setOtType] = useState("Regular Overtime");
+  const [overtimeDate, setOvertimeDate] = useState("");
+  const [overtimeStart, setOvertimeStart] = useState("");
+  const [overtimeEnd, setOvertimeEnd] = useState("");
+  const [disputeDate, setDisputeDate] = useState("");
+  const [reason, setReason] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const panelTitle = useMemo(() => {
     if (activeTab === "leave") return "New Leave Request";
     if (activeTab === "overtime") return "New Overtime Request";
     return "New Dispute Request";
   }, [activeTab]);
+
+  const resetForm = () => {
+    setReason("");
+    setLeaveStartDate("");
+    setLeaveEndDate("");
+    setOvertimeDate("");
+    setOvertimeStart("");
+    setOvertimeEnd("");
+    setDisputeDate("");
+  };
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+    setMessage("");
+
+    try {
+      setSubmitting(true);
+      if (activeTab === "leave") {
+        await submitRequest({
+          type: "leave",
+          leaveType,
+          startDate: leaveStartDate,
+          endDate: leaveEndDate,
+          reason
+        });
+      } else if (activeTab === "overtime") {
+        await submitRequest({
+          type: "overtime",
+          otType,
+          date: overtimeDate,
+          startTime: overtimeStart,
+          endTime: overtimeEnd,
+          reason
+        });
+      } else {
+        await submitRequest({
+          type: "dispute",
+          disputeDate,
+          disputeType,
+          reason
+        });
+      }
+
+      setMessage("Request submitted successfully.");
+      resetForm();
+      if (typeof onSubmitted === "function") {
+        onSubmitted();
+      }
+    } catch (error) {
+      setMessage(error?.error ?? "Unable to submit request.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="filing-center-layout">
@@ -46,7 +112,7 @@ export default function FilingCenterPanel() {
               <>
                 <label className="filing-field filing-field-full">
                   <span>Leave Type</span>
-                  <select defaultValue="Sick Leave">
+                  <select value={leaveType} onChange={event => setLeaveType(event.target.value)}>
                     <option>Sick Leave</option>
                     <option>Vacation Leave</option>
                     <option>Emergency Leave</option>
@@ -56,11 +122,11 @@ export default function FilingCenterPanel() {
                 <div className="filing-grid-two">
                   <label className="filing-field">
                     <span>Start Date</span>
-                    <input type="text" placeholder="mm/dd/yyyy" />
+                    <input type="date" value={leaveStartDate} onChange={event => setLeaveStartDate(event.target.value)} />
                   </label>
                   <label className="filing-field">
                     <span>End Date</span>
-                    <input type="text" placeholder="mm/dd/yyyy" />
+                    <input type="date" value={leaveEndDate} onChange={event => setLeaveEndDate(event.target.value)} />
                   </label>
                 </div>
               </>
@@ -71,18 +137,26 @@ export default function FilingCenterPanel() {
                 <div className="filing-warning" role="alert">
                   Overtime requests must be filed for a future date. Same-day filing is not permitted to allow for prior approval by your supervisor.
                 </div>
+                <label className="filing-field filing-field-full">
+                  <span>Overtime Type</span>
+                  <select value={otType} onChange={event => setOtType(event.target.value)}>
+                    <option>Regular Overtime</option>
+                    <option>Duty on Rest Day</option>
+                    <option>Duty on Rest Day OT</option>
+                  </select>
+                </label>
                 <div className="filing-grid-three">
                   <label className="filing-field">
                     <span>Date</span>
-                    <input type="text" placeholder="mm/dd/yyyy" />
+                    <input type="date" value={overtimeDate} onChange={event => setOvertimeDate(event.target.value)} />
                   </label>
                   <label className="filing-field">
                     <span>Start Time</span>
-                    <input type="text" placeholder="--:-- --" />
+                    <input type="time" value={overtimeStart} onChange={event => setOvertimeStart(event.target.value)} />
                   </label>
                   <label className="filing-field">
                     <span>End Time</span>
-                    <input type="text" placeholder="--:-- --" />
+                    <input type="time" value={overtimeEnd} onChange={event => setOvertimeEnd(event.target.value)} />
                   </label>
                 </div>
               </>
@@ -92,7 +166,7 @@ export default function FilingCenterPanel() {
               <div className="filing-grid-two">
                 <label className="filing-field">
                   <span>Dispute Date</span>
-                  <input type="text" placeholder="mm/dd/yyyy" />
+                  <input type="date" value={disputeDate} onChange={event => setDisputeDate(event.target.value)} />
                 </label>
                 <label className="filing-field">
                   <span>Dispute Type</span>
@@ -107,10 +181,13 @@ export default function FilingCenterPanel() {
 
             <label className="filing-field filing-field-full">
               <span>Reason / Justification</span>
-              <textarea placeholder="Provide a detailed explanation for your request..." rows={4} />
+              <textarea value={reason} onChange={event => setReason(event.target.value)} placeholder="Provide a detailed explanation for your request..." rows={4} />
             </label>
 
-            <button type="button" className="filing-submit-btn">Submit Request</button>
+            {message ? <div className="form-hint">{message}</div> : null}
+            <button type="button" className="filing-submit-btn" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? "Submitting..." : "Submit Request"}
+            </button>
           </div>
         </section>
       </div>
