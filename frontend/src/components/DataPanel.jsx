@@ -50,6 +50,8 @@ export default function DataPanel({
   onEditRow = null,
   externalDateFilter = null,
   onExternalDateFilterChange = null,
+  onRequestAction = null,
+  requestActionLoadingId = "",
 }) {
   const config = panelConfig[type] ?? panelConfig.attendance;
   const [searchQuery, setSearchQuery] = useState("");
@@ -169,6 +171,7 @@ export default function DataPanel({
           <span role="columnheader">Details</span>
           <span role="columnheader">Schedule / Period</span>
           <span role="columnheader">Status</span>
+          {onRequestAction && <span role="columnheader">Actions</span>}
         </div>
 
         {filteredRecords.length > 0 ? filteredRecords.map(item => (
@@ -178,6 +181,28 @@ export default function DataPanel({
             <span role="cell">{item.details ?? "—"}</span>
             <span role="cell">{item.schedule_period ?? "—"}</span>
             <span role="cell">{item.status ?? "Pending"}</span>
+            {onRequestAction && (
+              <span role="cell">
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <button
+                    className="btn"
+                    type="button"
+                    disabled={requestActionLoadingId === item.id || String(item.status ?? "").toLowerCase().includes("approve")}
+                    onClick={() => onRequestAction(item, "Approved")}
+                  >
+                    {requestActionLoadingId === item.id ? "Saving..." : "Accept"}
+                  </button>
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    disabled={requestActionLoadingId === item.id || String(item.status ?? "").toLowerCase().includes("reject")}
+                    onClick={() => onRequestAction(item, "Rejected")}
+                  >
+                    Reject
+                  </button>
+                </div>
+              </span>
+            )}
           </div>
         )) : (
           <div className="empty-state">No requests found.</div>

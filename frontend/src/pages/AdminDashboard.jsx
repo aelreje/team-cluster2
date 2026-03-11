@@ -58,7 +58,7 @@ export default function AdminDashboard() {
   const [editForm, setEditForm] = useState({ timeInAt: "", timeOutAt: "", tag: "", note: "" });
   const dateTimeLabel = useLiveDateTime();
   const { user } = useCurrentUser();
-  const attendanceNavItems = ["My Attendance", "All Attendance", "My Requests", "My Filing Center"];
+  const attendanceNavItems = ["My Attendance", "All Attendance", "My Requests", "My Filing Center", "Team Request"];
   const [attendanceExpanded, setAttendanceExpanded] = useState(true);
   const isAttendanceView = activeNav === "Attendance" || attendanceNavItems.includes(activeNav);
   const navItems = [
@@ -574,6 +574,12 @@ const handleOpenRejectModal = cluster => {
         ) : activeNav === "My Filing Center" ? (
           <section className="content">
             <FilingCenterPanel onSubmitted={() => fetchMyRequests().then(response => setMyRequests(Array.isArray(response) ? response : [])).catch(() => setMyRequests([]))} />
+          </section>
+        ) : activeNav === "Team Request" ? (
+          <section className="content">
+            <div className="section-title">Team Requests</div>
+            <AttendanceHistoryHighlights highlights={myRequestHighlights} />
+            <DataPanel type="requests" records={myRequests} />
           </section>
         ) : (
           <section className="content">

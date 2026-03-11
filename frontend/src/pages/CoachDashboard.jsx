@@ -6,7 +6,7 @@ import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighligh
 import MainDashboard from "./MainDashboard";
 import FilingCenterPanel from "../components/FilingCenterPanel";
 import DataPanel from "../components/DataPanel";
-import { buildRequestHighlights, fetchMyRequests } from "../api/requests";
+import { buildRequestHighlights, fetchMyRequests, fetchTeamRequests, updateTeamRequestStatus } from "../api/requests";
 import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { normalizeSchedule as normalizeAttendanceSchedule, parseDateValue, resolveAttendanceMainTag } from "../utils/attendanceTags";
@@ -104,6 +104,9 @@ export default function CoachDashboard() {
   const [attendanceSaveError, setAttendanceSaveError] = useState("");
   const [isSavingAttendanceEdit, setIsSavingAttendanceEdit] = useState(false);
   const [activeNav, setActiveNav] = useState("Dashboard");
+  const [teamRequests, setTeamRequests] = useState([]);
+  const [teamRequestsError, setTeamRequestsError] = useState("");
+  const [requestActionLoadingId, setRequestActionLoadingId] = useState("");
   const [scheduleForm, setScheduleForm] = useState({
     days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
     daySchedules: {
@@ -116,7 +119,7 @@ export default function CoachDashboard() {
   });
   const dateTimeLabel = useLiveDateTime();
   const { user } = useCurrentUser();
-  const attendanceNavItems = ["My Attendance", "Team Cluster Attendance", "My Requests", "My Filing Center"];
+  const attendanceNavItems = ["My Attendance", "Team Cluster Attendance", "My Requests", "My Filing Center", "Team Request"];
   const [attendanceExpanded, setAttendanceExpanded] = useState(true);
   const isAttendanceView = activeNav === "Attendance" || attendanceNavItems.includes(activeNav);
   const navItems = [
@@ -1192,7 +1195,9 @@ export default function CoachDashboard() {
   const isMyAttendanceView = activeNav === "Attendance" || activeNav === "My Attendance";
   const isTeamClusterAttendanceView = activeNav === "Team Cluster Attendance";
   const isMyRequestsView = activeNav === "My Requests";
+  const isTeamRequestView = activeNav === "Team Request";
   const myRequestHighlights = buildRequestHighlights(myRequests);
+  const teamRequestHighlights = buildRequestHighlights(teamRequests);
   const isFilingCenterView = activeNav === "My Filing Center";
   const attendanceViewTitle = activeNav === "Team Cluster Attendance" ? "Team Cluster Attendance" : "My Attendance";
   const filteredAttendanceRows = useMemo(() => {
@@ -1396,6 +1401,41 @@ export default function CoachDashboard() {
     }
   };
 
+
+  useEffect(() => {
+    if (!isTeamRequestView) return;
+
+    fetchTeamRequests()
+      .then(response => {
+        setTeamRequests(Array.isArray(response) ? response : []);
+        setTeamRequestsError("");
+      })
+      .catch(() => {
+        setTeamRequests([]);
+        setTeamRequestsError("Unable to load team requests.");
+      });
+  }, [isTeamRequestView]);
+
+  const handleTeamRequestAction = async (request, status) => {
+    if (!request?.id || !request?.request_source) return;
+
+    setRequestActionLoadingId(request.id);
+    setTeamRequestsError("");
+    try {
+      await updateTeamRequestStatus({
+        request_source: request.request_source,
+        request_id: request.source_id,
+        status
+      });
+
+      setTeamRequests(prev => prev.map(item => (item.id === request.id ? { ...item, status } : item)));
+    } catch (error) {
+      setTeamRequestsError(error?.error ?? "Unable to update team request status.");
+    } finally {
+      setRequestActionLoadingId("");
+    }
+  };
+
   return (
     <div className="dashboard">
       <DashboardSidebar
@@ -1432,11 +1472,13 @@ export default function CoachDashboard() {
               <div className="employee-card employee-attendance-history-card">
                 <div className="employee-card-header">
                   <div>
-                    <div className="employee-card-title">{isMyRequestsView ? "My Requests" : attendanceViewTitle}</div>
+                    <div className="employee-card-title">{isMyRequestsView ? "My Requests" : isTeamRequestView ? "Team Request" : attendanceViewTitle}</div>
                     <p className="employee-card-subtitle">
                       {isTeamClusterAttendanceView
                         ? "Review and edit your team members' attendance history."
-                        : "Attendance is now part of the Coach Dashboard."}
+                        : isTeamRequestView
+                          ? "Review filing requests from your team and approve or reject them."
+                          : "Attendance is now part of the Coach Dashboard."}
                     </p>
                   </div>
                 </div>
@@ -1444,7 +1486,18 @@ export default function CoachDashboard() {
                   {isMyRequestsView ? (
                     <>
                       <AttendanceHistoryHighlights highlights={myRequestHighlights} />
-                      <DataPanel type="requests" />
+                      <DataPanel type="requests" records={myRequests} />
+                    </>
+                  ) : isTeamRequestView ? (
+                    <>
+                      <AttendanceHistoryHighlights highlights={teamRequestHighlights} />
+                      {teamRequestsError && <div className="error">{teamRequestsError}</div>}
+                      <DataPanel
+                        type="requests"
+                        records={teamRequests}
+                        onRequestAction={handleTeamRequestAction}
+                        requestActionLoadingId={requestActionLoadingId}
+                      />
                     </>
                   ) : isTeamClusterAttendanceView ? (
                     <>
