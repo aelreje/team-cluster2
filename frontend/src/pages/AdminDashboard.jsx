@@ -12,12 +12,15 @@ import { buildRequestHighlights, fetchAdminTeamRequests, fetchMyRequests, update
 export default function AdminDashboard() {
   const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const workSetupOptions = ["Onsite", "Work From Home (WFH)"];
+  const FIXED_SHIFT_START = { time: "9:00", period: "AM" };
+  const FIXED_SHIFT_END = { time: "6:00", period: "PM" };
+  const FIXED_SHIFT_LABEL = `${FIXED_SHIFT_START.time} ${FIXED_SHIFT_START.period} - ${FIXED_SHIFT_END.time} ${FIXED_SHIFT_END.period}`;
   const defaultDaySchedule = {
     shiftType: "Morning Shift",
-    startTime: "9:00",
-    startPeriod: "AM",
-    endTime: "6:00",
-    endPeriod: "PM",
+    startTime: FIXED_SHIFT_START.time,
+    startPeriod: FIXED_SHIFT_START.period,
+    endTime: FIXED_SHIFT_END.time,
+    endPeriod: FIXED_SHIFT_END.period,
     workSetup: "Onsite",
     breakStartTime: "3:00",
     breakStartPeriod: "PM",
@@ -82,10 +85,7 @@ export default function AdminDashboard() {
 
   const formatTimeRange = daySchedule => {
     if (!daySchedule || typeof daySchedule !== "object") return "—";
-    const start = `${daySchedule.startTime ?? ""} ${daySchedule.startPeriod ?? ""}`.trim();
-    const end = `${daySchedule.endTime ?? ""} ${daySchedule.endPeriod ?? ""}`.trim();
-    if (!start || !end) return "—";
-    return `${start} - ${end}`;
+    return FIXED_SHIFT_LABEL;
   };
 
 
@@ -330,8 +330,7 @@ export default function AdminDashboard() {
 
       if (["endTime", "breakStart", "breakEnd"].includes(field)) {
         if (field === "endTime") {
-          nextDay.endTime = time ?? currentDay.endTime;
-          nextDay.endPeriod = period ?? currentDay.endPeriod;
+          return current;
         }
 
         if (field === "breakStart") {
@@ -344,8 +343,7 @@ export default function AdminDashboard() {
           nextDay.breakEndPeriod = period ?? currentDay.breakEndPeriod;
         }
       } else if (field === "startTime") {
-        nextDay.startTime = time ?? currentDay.startTime;
-        nextDay.startPeriod = period ?? currentDay.startPeriod;
+        return current;
       } else {
         nextDay[field] = value;
       }
@@ -422,13 +420,30 @@ export default function AdminDashboard() {
     setIsSavingSchedule(true);
     setScheduleModalMessage("");
 
+    const normalizedSchedule = {
+      ...scheduleForm,
+      daySchedules: Object.fromEntries(
+        Object.entries(scheduleForm.daySchedules).map(([day, daySchedule]) => [
+          day,
+          {
+            ...daySchedule,
+            shiftType: "Morning Shift",
+            startTime: FIXED_SHIFT_START.time,
+            startPeriod: FIXED_SHIFT_START.period,
+            endTime: FIXED_SHIFT_END.time,
+            endPeriod: FIXED_SHIFT_END.period
+          }
+        ])
+      )
+    };
+
     try {
       await apiFetch("api/coach/save_schedule.php", {
         method: "POST",
         body: JSON.stringify({
           cluster_id: managingScheduleCluster.id,
           employee_id: coachEmployeeId,
-          schedule: scheduleForm
+          schedule: normalizedSchedule
         })
       });
       await fetchClusters();
@@ -754,7 +769,6 @@ const handleOpenRejectModal = cluster => {
                   {dayOptions.map(day => {
                     const isWorkingDay = scheduleForm.days.includes(day);
                     const daySchedule = scheduleForm.daySchedules[day] ?? { ...defaultDaySchedule };
-                    const endTimeOptions = getEndTimeOptions(daySchedule.startTime, daySchedule.startPeriod);
                     const shiftRangeOptions = getTimeOptionsWithinRange(daySchedule.startTime, daySchedule.startPeriod, daySchedule.endTime, daySchedule.endPeriod);
                     const breakEndOptions = getTimeOptionsWithinRange(daySchedule.breakStartTime, daySchedule.breakStartPeriod, daySchedule.endTime, daySchedule.endPeriod);
                     const shiftHours = getMinutesBetween(daySchedule.startTime, daySchedule.startPeriod, daySchedule.endTime, daySchedule.endPeriod);
@@ -779,21 +793,11 @@ const handleOpenRejectModal = cluster => {
                               <div className="schedule-panel-title">Main Shift</div>
                               <div className="schedule-time-row schedule-field">
                                 <div className="schedule-time-label">Start Time</div>
-                                <div className="schedule-start-time">
-                                  <select value={daySchedule.startTime} onChange={event => handleChangeDayTime(day, "startTime", `${event.target.value}|${daySchedule.startPeriod}`)}>
-                                    {timeOptions.map(time => (<option key={`${day}-start-${time}`} value={time}>{time}</option>))}
-                                  </select>
-                                  <select value={daySchedule.startPeriod} onChange={event => handleChangeDayTime(day, "startTime", `${daySchedule.startTime}|${event.target.value}`)}>
-                                    <option value="AM">AM</option>
-                                    <option value="PM">PM</option>
-                                  </select>
-                                </div>
+                                <input type="text" value={`${daySchedule.startTime} ${daySchedule.startPeriod}`} readOnly />
                               </div>
                               <div className="schedule-time-row schedule-field">
                                 <div className="schedule-time-label">End Time</div>
-                                <select value={`${daySchedule.endTime}|${daySchedule.endPeriod}`} onChange={event => handleChangeDayTime(day, "endTime", event.target.value)}>
-                                  {endTimeOptions.map(option => (<option key={`${day}-end-${option.time}-${option.period}`} value={`${option.time}|${option.period}`}>{option.time} {option.period}</option>))}
-                                </select>
+                                <input type="text" value={`${daySchedule.endTime} ${daySchedule.endPeriod}`} readOnly />
                               </div>
                               <div className="schedule-panel-total">Total: {shiftHoursLabel}</div>
                             </div>
