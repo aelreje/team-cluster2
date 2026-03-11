@@ -26,6 +26,8 @@ if ($type === '' || $reason === '') {
 }
 
 $sessionUserId = (int)($_SESSION['user']['id'] ?? 0);
+$currentUserRole = strtolower((string)($_SESSION['user']['role'] ?? ''));
+$initialStatus = $currentUserRole === 'coach' ? 'Endorsed' : 'Pending';
 $employeeId = $sessionUserId;
 if (hasColumn($conn, 'employees', 'user_id') && hasColumn($conn, 'employees', 'employee_id')) {
     $stmt = $conn->prepare("SELECT employee_id FROM employees WHERE user_id = ? LIMIT 1");
@@ -59,7 +61,7 @@ if ($type === 'leave') {
         exit;
     }
 
-    $status = 'Pending';
+    $status = $initialStatus;
     $stmt = $conn->prepare("INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, reason, status, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
     $stmt->bind_param('isssss', $employeeId, $leaveType, $startDate, $endDate, $reason, $status);
     $stmt->execute();
@@ -77,7 +79,7 @@ if ($type === 'leave') {
 
     $startDateTime = $date . ' ' . $startTime . ':00';
     $endDateTime = $date . ' ' . $endTime . ':00';
-    $status = 'Pending';
+    $status = $initialStatus;
     $stmt = $conn->prepare("INSERT INTO overtime_requests (employee_id, ot_type, start_time, end_time, purpose, status, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
     $stmt->bind_param('isssss', $employeeId, $otType, $startDateTime, $endDateTime, $reason, $status);
     $stmt->execute();
@@ -91,7 +93,7 @@ if ($type === 'leave') {
         exit;
     }
 
-    $status = 'Pending';
+    $status = $initialStatus;
     $remarks = '';
 
     if ($clusterId === null) {

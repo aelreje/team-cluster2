@@ -53,7 +53,7 @@ if ($status === 'Approved') {
     $status = 'Endorsed';
 }
 
-iif (!in_array($source, ['leave', 'overtime', 'dispute'], true) || $requestId <= 0 || $status !== 'Endorsed') {
+if (!in_array($source, ['leave', 'overtime', 'dispute'], true) || $requestId <= 0 || $status !== 'Endorsed') {
     http_response_code(422);
     echo json_encode(["error" => "Invalid request update payload."]);
     exit;
