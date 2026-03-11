@@ -84,7 +84,6 @@ export default function CoachDashboard() {
   const [confirmState, setConfirmState] = useState(null);
   const [attendanceLog, setAttendanceLog] = useState({ timeInAt: null, timeOutAt: null, tag: null });
   const [coachAttendanceHistory, setCoachAttendanceHistory] = useState([]);
-<<<<<<< HEAD
   const [myRequests, setMyRequests] = useState([]);
   const [teamMemberAttendanceFilter, setTeamMemberAttendanceFilter] = useState("");
   const [teamAttendanceDateStartFilter, setTeamAttendanceDateStartFilter] = useState("");
@@ -93,7 +92,6 @@ export default function CoachDashboard() {
   const [teamAttendanceEditForm, setTeamAttendanceEditForm] = useState({ timeInAt: "", timeOutAt: "", tag: "", note: "" });
   const [teamAttendanceEditError, setTeamAttendanceEditError] = useState("");
   const [isSavingTeamAttendanceEdit, setIsSavingTeamAttendanceEdit] = useState(false);
-=======
   const [attendanceRows, setAttendanceRows] = useState([]);
   const [attendanceQuery, setAttendanceQuery] = useState("");
   const [attendanceSort, setAttendanceSort] = useState(attendanceSortOptions.newestAttendanceFirst);
@@ -105,7 +103,6 @@ export default function CoachDashboard() {
   const [attendanceEditForm, setAttendanceEditForm] = useState({ timeInAt: "", timeOutAt: "", tag: "", note: "" });
   const [attendanceSaveError, setAttendanceSaveError] = useState("");
   const [isSavingAttendanceEdit, setIsSavingAttendanceEdit] = useState(false);
->>>>>>> 72f6f99a8dd926dfc8abb49d3e0792b91345bf27
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [scheduleForm, setScheduleForm] = useState({
     days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
@@ -1528,55 +1525,7 @@ export default function CoachDashboard() {
                   )}
                 </div>
               </div>
-<<<<<<< HEAD
-              <div className="employee-card-body">
-                {isMyRequestsView ? (
-                  <>
-                    <AttendanceHistoryHighlights highlights={myRequestHighlights} />
-                    <DataPanel type="requests" records={myRequests} />
-                  </>
-                ) : isTeamClusterAttendanceView ? (
-                  <>
-                    {activeMembers.length === 0 ? (
-                      <div className="empty-state">No active team members found for this cluster yet.</div>
-                    ) : (
-                      <>
-                        <div className="attendance-history-range-filter" role="group" aria-label="Filter team member attendance">
-                          <label className="attendance-history-filter" htmlFor="coach-team-member-filter">
-                            <span>Team Member</span>
-                            <select
-                              id="coach-team-member-filter"
-                              value={teamMemberAttendanceFilter}
-                              onChange={event => setTeamMemberAttendanceFilter(event.target.value)}
-                            >
-                              {activeMembers.map(member => (
-                                <option key={member.id} value={member.id}>{member.fullname}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="attendance-history-filter" htmlFor="coach-attendance-history-date-filter-start">
-                            <span>From</span>
-                            <input
-                              id="coach-attendance-history-date-filter-start"
-                              type="date"
-                              value={teamAttendanceDateStartFilter}
-                              onChange={event => setTeamAttendanceDateStartFilter(event.target.value)}
-                            />
-                          </label>
-                          <label className="attendance-history-filter" htmlFor="coach-attendance-history-date-filter-end">
-                            <span>To</span>
-                            <input
-                              id="coach-attendance-history-date-filter-end"
-                              type="date"
-                              value={teamAttendanceDateEndFilter}
-                              onChange={event => setTeamAttendanceDateEndFilter(event.target.value)}
-                            />
-                          </label>
-                        </div>
-=======
             )}
->>>>>>> 72f6f99a8dd926dfc8abb49d3e0792b91345bf27
-
             {isTeamClusterAttendanceView && selectedMember && (
               <div className="modal-overlay" role="presentation" onClick={() => { setSelectedMember(null); setSelectedAttendanceEntry(null); setAttendanceSaveError(""); setHistoryDateStartFilter(""); setHistoryDateEndFilter(""); }}>
                 <section className="modal-card attendance-modal" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
