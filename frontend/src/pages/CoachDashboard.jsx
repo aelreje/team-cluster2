@@ -1477,7 +1477,7 @@ export default function CoachDashboard() {
                       {isTeamClusterAttendanceView
                         ? "Review and edit your team members' attendance history."
                         : isTeamRequestView
-                          ? "Review filing requests from your team and endorse or reject them before admin review."
+                          ? "Review filing requests from your team and directly endorse them for admin review."
                           : "Attendance is now part of the Coach Dashboard."}
                     </p>
                   </div>
@@ -1498,8 +1498,7 @@ export default function CoachDashboard() {
                         onRequestAction={handleTeamRequestAction}
                         requestActionLoadingId={requestActionLoadingId}
                         requestActions={[
-                          { label: "Endorse", status: "Endorsed", variant: "btn", allowedStatuses: ["pending"] },
-                          { label: "Reject", status: "Rejected", variant: "btn secondary", allowedStatuses: ["pending"] }
+                          { label: "Endorse to Admin", status: "Endorsed", variant: "btn", allowedStatuses: ["pending"] }
                         ]}
                       />
                     </>
