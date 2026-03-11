@@ -65,7 +65,7 @@ function getTodayShiftSchedule(schedule) {
 
   const todayKey = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date().getDay()];
   const assignedDays = Array.isArray(schedule.days) ? schedule.days : [];
-  if (!assignedDays.includes(todayKey)) {
+  if (assignedDays.length > 0 && !assignedDays.includes(todayKey)) {
     return null;
   }
 
