@@ -190,7 +190,7 @@ export default function AdminDashboard() {
 
   const fetchClusters = useCallback(async () => {
     try {
-      const data = await apiFetch("api/admin_cluster.php");
+      const data = await apiFetch("api/admin/admin_cluster.php");
       setClusters(data);
     } catch (error) {
       console.error("Failed to load clusters", error);
@@ -211,14 +211,14 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (activeNav !== "Attendance") return;
-    apiFetch(`api/admin_coach_attendance.php?attendance_date=${attendanceDate}`)
+    apiFetch(`api/admin/admin_coach_attendance.php?attendance_date=${attendanceDate}`)
       .then(data => setCoachAttendance(Array.isArray(data) ? data : []))
       .catch(() => setCoachAttendance([]));
   }, [activeNav, attendanceDate]);
 
   useEffect(() => {
     if (activeNav !== "All Attendance") return;
-    apiFetch(`api/admin_all_attendance.php?attendance_date=${attendanceDate}`)
+    apiFetch(`api/admin/admin_all_attendance.php?attendance_date=${attendanceDate}`)
       .then(data => setAllAttendance(Array.isArray(data) ? data : []))
       .catch(() => setAllAttendance([]));
   }, [activeNav, attendanceDate]);
@@ -247,7 +247,7 @@ export default function AdminDashboard() {
 
   const saveCoachAttendanceEdit = async () => {
     if (!editingCoachAttendance?.attendance_id) return;
-    await apiFetch("api/admin_update_coach_attendance.php", {
+    await apiFetch("api/admin/admin_update_coach_attendance.php", {
       method: "POST",
       body: JSON.stringify({
         attendance_id: editingCoachAttendance.attendance_id,
@@ -258,7 +258,7 @@ export default function AdminDashboard() {
       })
     });
     setEditingCoachAttendance(null);
-    const refreshed = await apiFetch(`api/admin_coach_attendance.php?attendance_date=${attendanceDate}`);
+    const refreshed = await apiFetch(`api/admin/admin_coach_attendance.php?attendance_date=${attendanceDate}`);
     setCoachAttendance(Array.isArray(refreshed) ? refreshed : []);
   };
 
@@ -386,7 +386,7 @@ export default function AdminDashboard() {
     setScheduleModalMessage("");
 
     try {
-      await apiFetch("api/save_schedule.php", {
+      await apiFetch("api/coach/save_schedule.php", {
         method: "POST",
         body: JSON.stringify({
           cluster_id: managingScheduleCluster.id,
@@ -404,7 +404,7 @@ export default function AdminDashboard() {
   };
 
   async function updateStatus(id, status, reason = "") {
-    await apiFetch("api/approve_cluster.php", {
+    await apiFetch("api/admin/approve_cluster.php", {
       method: "POST",
       body: JSON.stringify({
         cluster_id: id,

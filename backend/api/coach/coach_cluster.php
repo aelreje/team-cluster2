@@ -1,71 +1,56 @@
 <?php
-include "../config/database.php";
-include "../config/auth.php";
-requireRole("admin");
+include __DIR__ . "/../../config/database.php";
+include __DIR__ . "/../../config/auth.php";
+requireRole("coach");
 
 header("Content-Type: application/json");
 
-$clusterColumns = [];
-$clusterColumnResult = $conn->query("SHOW COLUMNS FROM clusters");
-if ($clusterColumnResult) {
-    while ($row = $clusterColumnResult->fetch_assoc()) {
-        $clusterColumns[] = $row["Field"];
+$columns = [];
+$columnResult = $conn->query("SHOW COLUMNS FROM clusters");
+if ($columnResult) {
+    while ($row = $columnResult->fetch_assoc()) {
+        $columns[] = $row["Field"];
     }
 }
 
-$userColumns = [];
-$userColumnResult = $conn->query("SHOW COLUMNS FROM users");
-if ($userColumnResult) {
-    while ($row = $userColumnResult->fetch_assoc()) {
-        $userColumns[] = $row["Field"];
-    }
-}
+$idColumn = in_array("id", $columns, true) ? "id" : "cluster_id";
+$ownerColumn = in_array("coach_id", $columns, true) ? "coach_id" : "user_id";
+$coachId = (int)$_SESSION["user"]["id"];
 
-$clusterIdColumn = in_array("id", $clusterColumns, true) ? "id" : "cluster_id";
-$ownerColumn = in_array("coach_id", $clusterColumns, true) ? "coach_id" : "user_id";
-$userIdColumn = in_array("id", $userColumns, true) ? "id" : "user_id";
-
-if (in_array("fullname", $userColumns, true)) {
-    $userDisplayExpr = "u.fullname";
-} elseif (in_array("email", $userColumns, true)) {
-    $userDisplayExpr = "u.email";
-} else {
-    $userDisplayExpr = "'Unknown'";
-}
-
-$res = $conn->query(
-     "SELECT c.$clusterIdColumn AS id,
+$stmt = $conn->prepare(
+    "SELECT c.$idColumn AS id,
             c.name,
             c.description,
-            c.created_at,
             c.status,
+            c.created_at,
             c.rejection_reason,
-            COALESCE($userDisplayExpr, 'Unknown') AS coach,
-            MAX(e.employee_id) AS coach_employee_id,
             COUNT(cm.employee_id) AS members
      FROM clusters c
-     LEFT JOIN users u ON c.$ownerColumn = u.$userIdColumn
-     LEFT JOIN employees e ON e.user_id = u.$userIdColumn
-     LEFT JOIN cluster_members cm ON c.$clusterIdColumn = cm.cluster_id
-     GROUP BY c.$clusterIdColumn, c.name, c.description, c.created_at, c.status, c.rejection_reason, coach
+     LEFT JOIN cluster_members cm ON cm.cluster_id = c.$idColumn
+     WHERE c.$ownerColumn = ?
+     GROUP BY c.$idColumn
      ORDER BY c.created_at DESC"
 );
 
-if ($res === false) {
-    http_response_code(500);
-    exit(json_encode(["error" => "Failed to load clusters."]));
-}
-
-$out = [];
+$stmt->bind_param("i", $coachId);
+$stmt->execute();
+$res = $stmt->get_result();
 
 function sqlTimeToUi(?string $value): array {
     if (!$value) return ['9:00', 'AM'];
 
-    $parts = explode(':', $value);
-    if (count($parts) < 2) return ['9:00', 'AM'];
+    $timestamp = strtotime($value);
+    if ($timestamp === false) {
+        $parts = explode(':', $value);
+        if (count($parts) < 2) return ['9:00', 'AM'];
 
-    $hour24 = (int)$parts[0];
-    $minute = (int)$parts[1];
+        $hour24 = (int)$parts[0];
+        $minute = (int)$parts[1];
+    } else {
+        $hour24 = (int)date('G', $timestamp);
+        $minute = (int)date('i', $timestamp);
+    }
+
     $period = $hour24 >= 12 ? 'PM' : 'AM';
     $hour12 = $hour24 % 12;
     if ($hour12 === 0) $hour12 = 12;
@@ -73,10 +58,10 @@ function sqlTimeToUi(?string $value): array {
     return [sprintf('%d:%02d', $hour12, $minute), $period];
 }
 
-function loadCoachSchedule(mysqli $conn, int $clusterId, int $coachUserId): ?array {
+function loadCoachSchedule(mysqli $conn, int $clusterId, int $coachId): ?array {
     $employeeStmt = $conn->prepare("SELECT employee_id FROM employees WHERE user_id = ? LIMIT 1");
     if (!$employeeStmt) return null;
-    $employeeStmt->bind_param("i", $coachUserId);
+    $employeeStmt->bind_param("i", $coachId);
     $employeeStmt->execute();
     $employeeRes = $employeeStmt->get_result();
     $employeeRow = $employeeRes ? $employeeRes->fetch_assoc() : null;
@@ -104,11 +89,13 @@ function loadCoachSchedule(mysqli $conn, int $clusterId, int $coachUserId): ?arr
         'Saturday' => 'Sat',
         'Sunday' => 'Sun'
     ];
+
     $shiftToUi = [
         'Morning' => 'Morning Shift',
         'Mid' => 'Mid Shift',
         'Night' => 'Night Shift'
     ];
+
     $workSetupToUi = [
         'Onsite' => 'Onsite',
         'WFH' => 'Work From Home (WFH)',
@@ -147,24 +134,12 @@ function loadCoachSchedule(mysqli $conn, int $clusterId, int $coachUserId): ?arr
     return count($schedule['days']) > 0 ? $schedule : null;
 }
 
-while ($r = $res->fetch_assoc()) {
-    $clusterId = (int)$r['id'];
-    $coachEmployeeId = isset($r['coach_employee_id']) ? (int)$r['coach_employee_id'] : 0;
-    $coachUserId = 0;
-
-    if ($coachEmployeeId > 0) {
-        $coachStmt = $conn->prepare("SELECT user_id FROM employees WHERE employee_id = ? LIMIT 1");
-        if ($coachStmt) {
-            $coachStmt->bind_param("i", $coachEmployeeId);
-            $coachStmt->execute();
-            $coachRes = $coachStmt->get_result();
-            $coachRow = $coachRes ? $coachRes->fetch_assoc() : null;
-            $coachUserId = isset($coachRow['user_id']) ? (int)$coachRow['user_id'] : 0;
-        }
-    }
-
-    $r['coach_schedule'] = $coachUserId > 0 ? loadCoachSchedule($conn, $clusterId, $coachUserId) : null;
-    $out[] = $r;
+$clusters = [];
+while ($row = $res->fetch_assoc()) {
+    $row["id"] = (int)$row["id"];
+    $row["members"] = (int)$row["members"];
+    $row["coach_schedule"] = loadCoachSchedule($conn, (int)$row["id"], $coachId);
+    $clusters[] = $row;
 }
 
-echo json_encode($out);
+echo json_encode($clusters);

@@ -21,7 +21,7 @@ export const toLocalSqlDateTime = date => {
 };
 
 export const saveDashboardAttendance = async ({ clusterId, nextAttendance }) => {
-  const response = await apiFetch("api/save_attendance.php", {
+  const response = await apiFetch("api/employee/save_attendance.php", {
     method: "POST",
     body: JSON.stringify({
       cluster_id: clusterId,

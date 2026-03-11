@@ -1,22 +1,22 @@
 import { apiFetch } from "./api";
 
 export async function fetchMyRequests() {
-  return apiFetch("api/my_requests.php");
+  return apiFetch("api/shared/my_requests.php");
 }
 
 export async function submitRequest(payload) {
-  return apiFetch("api/create_request.php", {
+  return apiFetch("api/shared/create_request.php", {
     method: "POST",
     body: JSON.stringify(payload)
   });
 }
 
 export async function fetchTeamRequests() {
-  return apiFetch("api/coach_team_requests.php");
+  return apiFetch("api/coach/coach_team_requests.php");
 }
 
 export async function updateTeamRequestStatus(payload) {
-  return apiFetch("api/coach_update_request_status.php", {
+  return apiFetch("api/coach/coach_update_request_status.php", {
     method: "POST",
     body: JSON.stringify(payload)
   });

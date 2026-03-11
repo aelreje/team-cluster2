@@ -267,7 +267,7 @@ export default function EmployeeDashboard() {
 
     setAttendanceLog(savedAttendance);
 
-    const history = await apiFetch("api/employee_attendance_history.php");
+    const history = await apiFetch("api/employee/employee_attendance_history.php");
     setAttendanceHistory(history);
   };
 
@@ -368,7 +368,7 @@ export default function EmployeeDashboard() {
     : "—";
 
   useEffect(() => {
-    apiFetch("api/employee_clusters.php").then(response => {
+    apiFetch("api/employee/employee_clusters.php").then(response => {
       const normalized = response.map(cluster => ({
         ...cluster,
         schedule: normalizeSchedule(cluster.schedule)
@@ -384,7 +384,7 @@ export default function EmployeeDashboard() {
       }
     });
 
-    apiFetch("api/employee_attendance_history.php").then(response => {
+    apiFetch("api/employee/employee_attendance_history.php").then(response => {
       setAttendanceHistory(response);
     });
 

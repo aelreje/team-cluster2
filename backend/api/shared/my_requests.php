@@ -1,6 +1,6 @@
 <?php
-include "../config/database.php";
-include "../config/auth.php";
+include __DIR__ . "/../../config/database.php";
+include __DIR__ . "/../../config/auth.php";
 requireRole(["admin", "coach", "employee"]);
 
 function hasTable(mysqli $conn, string $table): bool {

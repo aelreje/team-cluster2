@@ -552,7 +552,7 @@ export default function CoachDashboard() {
   );
 
   useEffect(() => {
-    apiFetch("api/coach_clusters.php")
+    apiFetch("api/coach/coach_clusters.php")
       .then(setClusters)
       .catch(err => {
         setError(err?.error ?? "Unable to load team clusters.");
@@ -572,7 +572,7 @@ export default function CoachDashboard() {
     setActiveMembersLoading(true);
     setActiveMembersError("");
 
-    apiFetch(`api/manage_members.php?cluster_id=${active.id}&attendance_date=${attendanceDateFilter}`)
+    apiFetch(`api/coach/manage_members.php?cluster_id=${active.id}&attendance_date=${attendanceDateFilter}`)
       .then(memberData => {
         const normalizedMembers = memberData.map(member => ({
           ...member,
@@ -600,8 +600,8 @@ export default function CoachDashboard() {
     setEmployeeSearchQuery("");
 
     Promise.all([
-      apiFetch(`api/manage_members.php?cluster_id=${activeCluster.id}`),
-      apiFetch("api/employee_list.php")
+      apiFetch(`api/coach/manage_members.php?cluster_id=${activeCluster.id}`),
+      apiFetch("api/employee/employee_list.php")
     ])
       .then(([memberData, employeeData]) => {
         const normalizedMembers = memberData.map(member => ({
@@ -628,7 +628,7 @@ export default function CoachDashboard() {
   useEffect(() => {
     const loadCoachAttendance = async () => {
       try {
-        const history = await apiFetch("api/coach_attendance_history.php");
+        const history = await apiFetch("api/coach/coach_attendance_history.php");
         const records = Array.isArray(history) ? history : [];
         setCoachAttendanceHistory(records);
         const activeRecord = records.find(entry => entry.time_in_at && !entry.time_out_at) ?? records[0] ?? null;
@@ -655,7 +655,7 @@ export default function CoachDashboard() {
     });
 
     setAttendanceLog(savedAttendance);
-    const history = await apiFetch("api/coach_attendance_history.php");
+    const history = await apiFetch("api/coach/coach_attendance_history.php");
     setCoachAttendanceHistory(Array.isArray(history) ? history : []);
   };
 
@@ -734,7 +734,7 @@ export default function CoachDashboard() {
         description: formValues.description.trim()
       };
 
-      const created = await apiFetch("api/create_cluster.php", {
+      const created = await apiFetch("api/coach/create_cluster.php", {
         method: "POST",
         body: JSON.stringify(payload)
       });
@@ -787,7 +787,7 @@ export default function CoachDashboard() {
     setError("");
 
     try {
-      await apiFetch("api/resubmit_cluster.php", {
+      await apiFetch("api/coach/resubmit_cluster.php", {
         method: "POST",
         body: JSON.stringify({
           cluster_id: cluster.id,
@@ -830,7 +830,7 @@ export default function CoachDashboard() {
         setError("");
 
         try {
-          await apiFetch("api/disband_cluster.php", {
+          await apiFetch("api/coach/disband_cluster.php", {
             method: "POST",
             body: JSON.stringify({ cluster_id: cluster.id })
           });
@@ -1070,7 +1070,7 @@ export default function CoachDashboard() {
         schedule: scheduleForm
       };
 
-      await apiFetch("api/save_schedule.php", {
+      await apiFetch("api/coach/save_schedule.php", {
         method: "POST",
         body: JSON.stringify(payload)
       });
@@ -1106,7 +1106,7 @@ export default function CoachDashboard() {
     setMemberError("");
 
     try {
-      const added = await apiFetch("api/add_member.php", {
+      const added = await apiFetch("api/coach/add_member.php", {
         method: "POST",
         body: JSON.stringify({
           cluster_id: activeCluster.id,
@@ -1156,7 +1156,7 @@ export default function CoachDashboard() {
         setMemberError("");
 
         try {
-          await apiFetch("api/delete_member.php", {
+          await apiFetch("api/coach/delete_member.php", {
             method: "POST",
             body: JSON.stringify({
               cluster_id: activeCluster.id,
@@ -1355,7 +1355,7 @@ export default function CoachDashboard() {
     setAttendanceSaveError("");
 
     try {
-      await apiFetch("api/coach_update_attendance.php", {
+      await apiFetch("api/coach/coach_update_attendance.php", {
         method: "POST",
         body: JSON.stringify({
           cluster_id: dashboardCluster.id,
@@ -1368,7 +1368,7 @@ export default function CoachDashboard() {
         })
       });
 
-      const refreshedMembers = await apiFetch(`api/manage_members.php?cluster_id=${dashboardCluster.id}&attendance_date=${attendanceDateFilter}`);
+      const refreshedMembers = await apiFetch(`api/coach/manage_members.php?cluster_id=${dashboardCluster.id}&attendance_date=${attendanceDateFilter}`);
       const normalizedMembers = refreshedMembers.map(member => ({
         ...member,
         schedule: normalizeSchedule(member.schedule)
