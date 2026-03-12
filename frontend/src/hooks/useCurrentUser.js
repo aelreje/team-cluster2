@@ -28,7 +28,11 @@ export default function useCurrentUser() {
         setUser(response);
         localStorage.setItem(
           STORAGE_KEY,
-          JSON.stringify({ fullname: response.fullname, role: response.role })
+          JSON.stringify({
+            fullname: response.fullname,
+            role: response.role,
+            permissions: Array.isArray(response.permissions) ? response.permissions : []
+          })
         );
       } catch {
         if (!isActive) return;

@@ -11,35 +11,12 @@ import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { resolveAttendanceMainTag } from "../utils/attendanceTags";
 
+const ATTENDANCE_NAV_ITEMS = ["My Attendance", "My Requests", "My Filing Center"];
 
 export default function EmployeeDashboard() {
-  const navItems = ["Dashboard", "Team", "Attendance", "Schedule"];
-  const attendanceNavItems = ["My Attendance", "My Requests", "My Filing Center"];
   const [data, setData] = useState([]);
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [attendanceExpanded, setAttendanceExpanded] = useState(true);
-  const isAttendanceView = attendanceNavItems.includes(activeNav);
-  const sidebarNavItems = navItems.map(item => {
-    if (item === "Attendance") {
-      return {
-        label: item,
-        active: isAttendanceView,
-        expanded: attendanceExpanded,
-        onClick: () => setAttendanceExpanded(prev => !prev),
-        children: attendanceNavItems.map(label => ({
-          label,
-          active: activeNav === label,
-          onClick: () => setActiveNav(label)
-        }))
-      };
-    }
-
-    return {
-      label: item,
-      active: activeNav === item,
-      onClick: () => setActiveNav(item)
-    };
-  });
   const [attendanceLog, setAttendanceLog] = useState({
     timeInAt: null,
     timeOutAt: null,
@@ -50,6 +27,39 @@ export default function EmployeeDashboard() {
   const activeCluster = data[0];
   const dateTimeLabel = useLiveDateTime();
   const { user } = useCurrentUser();
+  const userPermissions = new Set(user?.permissions ?? []);
+  const canViewDashboard = userPermissions.has("View Dashboard");
+  const canViewTeam = userPermissions.has("View Team");
+  const canViewAttendance = userPermissions.has("View Attendance");
+
+  const allowedTopLevelNav = [
+    canViewDashboard ? "Dashboard" : null,
+    canViewTeam ? "Team" : null,
+    canViewAttendance ? "Attendance" : null
+  ].filter(Boolean);
+
+  const isAttendanceView = ATTENDANCE_NAV_ITEMS.includes(activeNav);
+  const sidebarNavItems = allowedTopLevelNav.map(item => {
+    if (item !== "Attendance") {
+      return {
+        label: item,
+        active: activeNav === item,
+        onClick: () => setActiveNav(item)
+      };
+    }
+
+    return {
+      label: item,
+      active: isAttendanceView,
+      expanded: attendanceExpanded,
+      onClick: () => setAttendanceExpanded(prev => !prev),
+      children: ATTENDANCE_NAV_ITEMS.map(label => ({
+        label,
+        active: activeNav === label,
+        onClick: () => setActiveNav(label)
+      }))
+    };
+  });
 
   const normalizeSchedule = schedule => {
     if (!schedule) return schedule;
@@ -368,6 +378,19 @@ export default function EmployeeDashboard() {
     : "—";
 
   useEffect(() => {
+    if (allowedTopLevelNav.length === 0) return;
+
+    const allowedViews = new Set([
+      ...allowedTopLevelNav,
+      ...(canViewAttendance ? ATTENDANCE_NAV_ITEMS : [])
+    ]);
+
+    if (!allowedViews.has(activeNav)) {
+      setActiveNav(canViewAttendance ? "My Attendance" : allowedTopLevelNav[0]);
+    }
+  }, [activeNav, allowedTopLevelNav, canViewAttendance]);
+
+  useEffect(() => {
     apiFetch("api/employee/employee_clusters.php").then(response => {
       const normalized = response.map(cluster => ({
         ...cluster,
@@ -418,6 +441,12 @@ export default function EmployeeDashboard() {
       />
 
       <main className="main">
+        {allowedTopLevelNav.length === 0 ? (
+          <section className="content">
+            <div className="empty-state">No dashboard modules are enabled for your account.</div>
+          </section>
+        ) : (
+          <>
         <header className="topbar">
           <div>
             <h2>{activeNav.toUpperCase()}</h2>
@@ -588,6 +617,8 @@ export default function EmployeeDashboard() {
             </div>
           )}
         </section>
+          </>
+        )}
       </main>
     </div>
   );

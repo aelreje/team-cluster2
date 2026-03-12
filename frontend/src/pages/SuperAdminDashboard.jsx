@@ -10,6 +10,8 @@ import DataPanel from "../components/DataPanel";
 import ControlPanelSection from "../components/ControlPanelSection";
 import { buildRequestHighlights, fetchAdminTeamRequests, fetchMyRequests, updateAdminTeamRequestStatus } from "../api/requests";
 
+const ATTENDANCE_NAV_ITEMS = ["My Attendance", "All Attendance", "My Requests", "My Filing Center", "Team Request"];
+
 export default function SuperAdminDashboard() {
   const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const workSetupOptions = ["Onsite", "Work From Home (WFH)"];
@@ -100,27 +102,37 @@ export default function SuperAdminDashboard() {
   const [editForm, setEditForm] = useState({ timeInAt: "", timeOutAt: "", tag: "", note: "" });
   const dateTimeLabel = useLiveDateTime();
   const { user } = useCurrentUser();
-  const attendanceNavItems = ["My Attendance", "All Attendance", "My Requests", "My Filing Center", "Team Request"];
+  const userPermissions = new Set(user?.permissions ?? []);
+  const canAddEmployee = userPermissions.has("Add Employee");
+  const canSetAttendance = userPermissions.has("Set Attendance");
+  const canEditAttendance = userPermissions.has("Edit Attendance");
+  const canViewDashboard = userPermissions.has("View Dashboard");
+  const canViewTeam = userPermissions.has("View Team");
+  const canViewAttendance = userPermissions.has("View Attendance");
+  const canViewEmployeeList = userPermissions.has("View Employee List");
+  const canAccessControlPanel = userPermissions.has("Access Control Panel");
   const [attendanceExpanded, setAttendanceExpanded] = useState(true);
-  const isAttendanceView = activeNav === "Attendance" || attendanceNavItems.includes(activeNav);
+  const isAttendanceView = activeNav === "Attendance" || ATTENDANCE_NAV_ITEMS.includes(activeNav);
   const navItems = [
-    { label: "Dashboard", active: activeNav === "Dashboard", onClick: () => setActiveNav("Dashboard") },
-    { label: "Team", active: activeNav === "Team", onClick: () => setActiveNav("Team") },
-    {
-      label: "Attendance",
-      active: isAttendanceView,
-      expanded: attendanceExpanded,
-      onClick: () => setAttendanceExpanded(prev => !prev),
-      children: attendanceNavItems.map(label => ({
-        label,
-        active: (label === "My Attendance" && activeNav === "Attendance") || activeNav === label,
-        onClick: () => setActiveNav(label === "My Attendance" ? "Attendance" : label)
-      }))
-    },
-    { label: "Schedule", active: activeNav === "Schedule", onClick: () => setActiveNav("Schedule") },
-    { label: "Employees", active: activeNav === "Employees", onClick: () => setActiveNav("Employees") },
-    { label: "Control Panel", active: activeNav === "Control Panel", onClick: () => setActiveNav("Control Panel") }
-  ];
+    canViewDashboard ? { label: "Dashboard", active: activeNav === "Dashboard", onClick: () => setActiveNav("Dashboard") } : null,
+    canViewTeam ? { label: "Team", active: activeNav === "Team", onClick: () => setActiveNav("Team") } : null,
+    canViewAttendance
+      ? {
+          label: "Attendance",
+          active: isAttendanceView,
+          expanded: attendanceExpanded,
+          onClick: () => setAttendanceExpanded(prev => !prev),
+          children: ATTENDANCE_NAV_ITEMS.map(label => ({
+            label,
+            active: (label === "My Attendance" && activeNav === "Attendance") || activeNav === label,
+            onClick: () => setActiveNav(label === "My Attendance" ? "Attendance" : label)
+          }))
+        }
+      : null,
+    canSetAttendance ? { label: "Schedule", active: activeNav === "Schedule", onClick: () => setActiveNav("Schedule") } : null,
+    canViewEmployeeList ? { label: "Employees", active: activeNav === "Employees", onClick: () => setActiveNav("Employees") } : null,
+    canAccessControlPanel ? { label: "Control Panel", active: activeNav === "Control Panel", onClick: () => setActiveNav("Control Panel") } : null
+  ].filter(Boolean);
   const formatTimeRange = daySchedule => {
     if (!daySchedule || typeof daySchedule !== "object") return "—";
     return FIXED_SHIFT_LABEL;
@@ -301,6 +313,20 @@ export default function SuperAdminDashboard() {
       setRequestActionLoadingId("");
     }
   };
+
+  useEffect(() => {
+    const allowedViews = new Set(navItems.map(item => item.label));
+    if (canViewAttendance) {
+      ATTENDANCE_NAV_ITEMS.forEach(label => {
+        allowedViews.add(label === "My Attendance" ? "Attendance" : label);
+      });
+    }
+
+    if (allowedViews.size === 0) return;
+    if (!allowedViews.has(activeNav)) {
+      setActiveNav(canViewAttendance ? "Attendance" : navItems[0]?.label ?? "Dashboard");
+    }
+  }, [activeNav, navItems, canViewAttendance]);
 
 
   useEffect(() => {
@@ -627,7 +653,11 @@ const handleOpenRejectModal = cluster => {
       />
 
       <main className="main">
-        {activeNav === "Dashboard" ? (
+        {navItems.length === 0 ? (
+          <section className="content">
+            <div className="empty-state">No dashboard modules are enabled for your account.</div>
+          </section>
+        ) : activeNav === "Dashboard" ? (
           <section className="content">
             <MainDashboard
               schedule={adminMainDashboardSchedule}
@@ -709,7 +739,7 @@ const handleOpenRejectModal = cluster => {
               records={coachAttendance}
               personField="employee_name"
               personLabel="Coach"
-              onEditRow={openAttendanceEdit}
+              onEditRow={canEditAttendance ? openAttendanceEdit : undefined}
               externalDateFilter={attendanceDate}
               onExternalDateFilterChange={setAttendanceDate}
             />
@@ -723,7 +753,7 @@ const handleOpenRejectModal = cluster => {
               records={allAttendance}
               personField="employee_name"
               personLabel="Employee"
-              onEditRow={openAttendanceEdit}
+              onEditRow={canEditAttendance ? openAttendanceEdit : undefined}
               externalDateFilter={attendanceDate}
               onExternalDateFilterChange={setAttendanceDate}
             />
@@ -762,17 +792,19 @@ const handleOpenRejectModal = cluster => {
                 <div className="section-title">EMPLOYEE LIST</div>
                 <div className="employee-list-count">{employees.length} Employees</div>
               </div>
-              <button
-                className="btn primary"
-                type="button"
-                onClick={() => {
-                  setAddEmployeeActiveTab("personal");
-                  setAddEmployeeError("");
-                  setIsAddEmployeeModalOpen(true);
-                }}
-              >
-                + Add Employee
-              </button>
+              {canAddEmployee ? (
+                <button
+                  className="btn primary"
+                  type="button"
+                  onClick={() => {
+                    setAddEmployeeActiveTab("personal");
+                    setAddEmployeeError("");
+                    setIsAddEmployeeModalOpen(true);
+                  }}
+                >
+                  + Add Employee
+                </button>
+              ) : null}
             </div>
 
             {employeeError && <div className="error">{employeeError}</div>}
@@ -834,9 +866,13 @@ const handleOpenRejectModal = cluster => {
                         <span className={`badge ${cluster.status}`}>{cluster.status}</span>
                       </div>
                       <div className="table-cell">
-                        <button className="btn primary" type="button" onClick={() => handleOpenScheduleModal(cluster)}>
-                          Manage
-                        </button>
+                        {canSetAttendance ? (
+                          <button className="btn primary" type="button" onClick={() => handleOpenScheduleModal(cluster)}>
+                            Manage
+                          </button>
+                        ) : (
+                          <span className="table-cell muted">—</span>
+                        )}
                       </div>
                     </div>
                   ))}

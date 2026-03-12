@@ -44,6 +44,7 @@ if (!$email || !$password) {
 
 $stmt = $conn->prepare(
     "SELECT u.user_id,
+            u.role_id,
             u.email,
             u.password,
             r.role_name,
@@ -76,6 +77,7 @@ if ($user && password_verify($password, $user['password'])) {
 
     $_SESSION['user'] = [
         'id' => (int)$user['user_id'],
+        'role_id' => isset($user['role_id']) ? (int)$user['role_id'] : null,
         'fullname' => $fullname,
         'email' => $user['email'],
         'role' => $role
