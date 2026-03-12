@@ -93,7 +93,9 @@ export default function SuperAdminDashboard() {
         onClick: () => setActiveNav(label === "My Attendance" ? "Attendance" : label)
       }))
     },
-    { label: "Schedule", active: activeNav === "Schedule", onClick: () => setActiveNav("Schedule") }
+    { label: "Schedule", active: activeNav === "Schedule", onClick: () => setActiveNav("Schedule") },
+    { label: "Employees", active: activeNav === "Employees", onClick: () => setActiveNav("Employees") },
+    { label: "Control Panel", active: activeNav === "Control Panel", onClick: () => setActiveNav("Control Panel") }
   ];
 
   const formatTimeRange = daySchedule => {
