@@ -1,23 +1,7 @@
 <?php
 
-require_once "../cors.php";
-session_start();
-
-if ($_SESSION['role_name'] !== 'Superadmin') {
-    http_response_code(403);
-    exit();
-}
-
+require_once __DIR__ . "/_require_superadmin.php";
 require_once "../config/database.php";
-
-// require_once "../utils/logger.php";
-
-// logAction(
-//     $conn,
-//     $_SESSION['user_id'],
-//     "Archived Employee",
-//     $employee_id
-// );
 
 $result = $conn->query("
 SELECT 
@@ -33,13 +17,9 @@ WHERE archived = 1
 $users = [];
 
 while ($row = $result->fetch_assoc()) {
-
     $users[] = [
         "employee_id" => $row['employee_id'],
-        "fullName" =>
-            $row['first_name'] . " " .
-            $row['middle_name'] . " " .
-            $row['last_name'],
+        "fullName" => trim($row['first_name'] . " " . ($row['middle_name'] ?? '') . " " . $row['last_name']),
         "position" => $row['position']
     ];
 }
