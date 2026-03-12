@@ -134,9 +134,21 @@ export default function ControlPanelSection() {
     }));
   }, [roles]);
 
+  const resolveRoleId = role => {
+    if (role && typeof role.role_id !== "undefined" && role.role_id !== null) return role.role_id;
+
+    if (!role?.role_name) return undefined;
+
+    const matchedRole = roles.find(
+      item => normalizeRoleName(item.role_name) === normalizeRoleName(role.role_name)
+    );
+
+    return matchedRole?.role_id;
+  };
+
   const openRoleEditor = role => {
     setRoleSaveError("");
-    setSelectedRole(role);
+    setSelectedRole({ ...role, role_id: resolveRoleId(role) });
     setTempPermissions(Array.isArray(role.permissions) ? [...role.permissions] : []);
   };
 
@@ -147,8 +159,12 @@ export default function ControlPanelSection() {
   };
 
   const saveRolePermissions = async () => {
-    if (!selectedRole || typeof selectedRole.role_id === "undefined") {
-      setRoleSaveError("Unable to save role permissions because this role has no role id.");
+    if (!selectedRole) return;
+
+    const roleId = resolveRoleId(selectedRole);
+
+    if (typeof roleId === "undefined" || roleId === null) {
+      setRoleSaveError("Unable to save role permissions because the role could not be resolved from the server data.");
       return;
     }
 
@@ -158,7 +174,7 @@ export default function ControlPanelSection() {
       const response = await apiFetch("api/control_panel/update_role_permissions.php", {
         method: "POST",
         body: JSON.stringify({
-          role_id: selectedRole.role_id,
+          role_id: roleId,
           permissions: tempPermissions
         })
       });
