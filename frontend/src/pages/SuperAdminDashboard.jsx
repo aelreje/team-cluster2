@@ -145,6 +145,21 @@ export default function SuperAdminDashboard() {
   const [rolePermissionCards, setRolePermissionCards] = useState(initialRolePermissionCards);
   const [editingPermissionRole, setEditingPermissionRole] = useState(null);
   const [permissionSelection, setPermissionSelection] = useState([]);
+  const [activeControlPanelTab, setActiveControlPanelTab] = useState("General");
+
+  const roleDirectoryRows = [
+    { id: 1, fullName: "", role: "Admin", position: "" },
+    { id: 2, fullName: "", role: "Employee", position: "" },
+    { id: 3, fullName: "", role: "Employee", position: "" },
+    { id: 4, fullName: "", role: "Team Coach", position: "" },
+    { id: 5, fullName: "", role: "Super Admin", position: "" }
+  ];
+
+  const archiveRows = [
+    { id: 1, fullName: "", position: "" },
+    { id: 2, fullName: "", position: "" },
+    { id: 3, fullName: "", position: "" }
+  ];
 
   const closePermissionEditor = () => {
     setEditingPermissionRole(null);
@@ -748,36 +763,105 @@ const handleOpenRejectModal = cluster => {
                   key={tab}
                   type="button"
                   role="tab"
-                  aria-selected={tab === "General"}
-                  className={`control-panel-tab ${tab === "General" ? "active" : ""}`}
+                  aria-selected={tab === activeControlPanelTab}
+                  className={`control-panel-tab ${tab === activeControlPanelTab ? "active" : ""}`}
+                  onClick={() => setActiveControlPanelTab(tab)}
                 >
                   {tab}
                 </button>
               ))}
             </div>
 
-            <div className="permission-card-grid">
-              {rolePermissionCards.map(card => (
-                <article key={card.role} className="permission-card">
-                  <header className="permission-card-header">{card.role}</header>
-                  <div className="permission-card-body">
-                    <p className="permission-card-label">Permissions:</p>
-                    <ul>
-                      {card.permissions.map(permission => (
-                        <li key={`${card.role}-${permission}`}>{permission}</li>
-                      ))}
-                    </ul>
-                    <button
-                      type="button"
-                      className="btn permission-edit-btn"
-                      onClick={() => openPermissionEditor(card)}
-                    >
-                      Edit Permissions
-                    </button>
+            {activeControlPanelTab === "General" ? (
+              <div className="permission-card-grid">
+                {rolePermissionCards.map(card => (
+                  <article key={card.role} className="permission-card">
+                    <header className="permission-card-header">{card.role}</header>
+                    <div className="permission-card-body">
+                      <p className="permission-card-label">Permissions:</p>
+                      <ul>
+                        {card.permissions.map(permission => (
+                          <li key={`${card.role}-${permission}`}>{permission}</li>
+                        ))}
+                      </ul>
+                      <button
+                        type="button"
+                        className="btn permission-edit-btn"
+                        onClick={() => openPermissionEditor(card)}
+                      >
+                        Edit Permissions
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+
+            {activeControlPanelTab === "Search" ? (
+              <>
+                <input className="control-panel-search" type="search" placeholder="Search a User..." aria-label="Search a User" />
+                <div className="control-panel-table-wrap" role="table" aria-label="Search results table">
+                  <div className="control-panel-table-header" role="row">
+                    <span role="columnheader">ID</span>
+                    <span role="columnheader">Full Name</span>
+                    <span role="columnheader">Role</span>
+                    <span role="columnheader">Position</span>
+                    <span role="columnheader">Action</span>
                   </div>
-                </article>
-              ))}
-            </div>
+                {roleDirectoryRows.map(row => (
+                    <div key={`search-row-${row.id}`} className="control-panel-table-row" role="row">
+                      <span role="cell">{row.id}</span>
+                      <span role="cell">{row.fullName}</span>
+                      <span role="cell">{row.role}</span>
+                      <span role="cell">{row.position}</span>
+                      <span role="cell">
+                        <button
+                          type="button"
+                          className="btn permission-edit-btn"
+                          onClick={() => {
+                            const selectedCard = rolePermissionCards.find(card => card.role === row.role);
+                            if (selectedCard) openPermissionEditor(selectedCard);
+                          }}
+                        >
+                          Permissions
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+
+            {activeControlPanelTab === "Logs" ? (
+              <div className="control-panel-table-wrap" role="table" aria-label="Control panel logs table">
+                <div className="control-panel-table-header" role="row">
+                  <span role="columnheader">ID</span>
+                  <span role="columnheader">User</span>
+                  <span role="columnheader">Action</span>
+                  <span role="columnheader">Target</span>
+                  <span role="columnheader">Date</span>
+                </div>
+              </div>
+            ) : null}
+
+            {activeControlPanelTab === "User Archives" ? (
+              <div className="control-panel-table-wrap" role="table" aria-label="User archives table">
+                <div className="control-panel-table-header" role="row">
+                  <span role="columnheader">ID</span>
+                  <span role="columnheader">Full Name</span>
+                  <span role="columnheader">Position</span>
+                  <span role="columnheader">Action</span>
+                </div>
+                {archiveRows.map(row => (
+                  <div key={`archive-row-${row.id}`} className="control-panel-table-row" role="row">
+                    <span role="cell">{row.id}</span>
+                    <span role="cell">{row.fullName}</span>
+                    <span role="cell">{row.position}</span>
+                    <span role="cell"> </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
 
             {editingPermissionRole && (
               <div className="modal-overlay" role="presentation" onClick={closePermissionEditor}>

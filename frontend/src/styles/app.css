@@ -2567,12 +2567,63 @@ body {
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 14px;
-  cursor: default;
+  cursor: pointer;
 }
 
 .control-panel-tab.active {
   background: #dbeafe;
   border-color: #bfdbfe;
+}
+
+.control-panel-search {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: 12px 16px;
+  font-size: 16px;
+  color: #374151;
+}
+
+.control-panel-search:focus {
+  outline: 2px solid #bfdbfe;
+  outline-offset: 1px;
+}
+
+.control-panel-table-wrap {
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.control-panel-table-header,
+.control-panel-table-row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(70px, 0.6fr) minmax(180px, 1.4fr) minmax(160px, 1fr) minmax(160px, 1fr) minmax(140px, 1fr);
+  gap: 16px;
+  padding: 14px 18px;
+}
+
+.control-panel-table-header {
+  background: #2f8ccc;
+  color: #fff;
+  font-weight: 700;
+}
+
+.control-panel-table-row {
+  border-top: 1px solid #e5e7eb;
+  color: #111827;
+  font-size: 16px;
+}
+
+.control-panel-table-wrap[aria-label="Control panel logs table"] .control-panel-table-header {
+  grid-template-columns: minmax(70px, 0.6fr) minmax(220px, 1.2fr) minmax(200px, 1fr) minmax(180px, 1fr) minmax(160px, 1fr);
+}
+
+.control-panel-table-wrap[aria-label="User archives table"] .control-panel-table-header,
+.control-panel-table-wrap[aria-label="User archives table"] .control-panel-table-row {
+  grid-template-columns: minmax(70px, 0.6fr) minmax(220px, 1.4fr) minmax(180px, 1fr) minmax(180px, 1fr);
 }
 
 .permission-card-grid {
@@ -2618,6 +2669,10 @@ body {
   border-color: #1d4ed8;
   background: #1d4ed8;
   color: #ffffff;
+}
+
+.control-panel-table-row .permission-edit-btn {
+  margin-top: 0;
 }
 
 .permission-edit-btn:hover {
