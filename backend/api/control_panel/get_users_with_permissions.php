@@ -1,18 +1,6 @@
 <?php
-require_once "../cors.php";
-session_start();
-
-if (!isset($_SESSION['user_id'], $_SESSION['employee_id'])) {
-    http_response_code(401);
-    echo json_encode([
-        "success" => false,
-        "message" => "Not authenticated"
-    ]);
-    exit();
-}
-
+require_once __DIR__ . "/_require_superadmin.php";
 require_once "../config/database.php";
-
 
 $sql = "
 SELECT 
@@ -32,7 +20,6 @@ GROUP BY u.user_id
 ";
 
 $result = $conn->query($sql);
-
 $users = [];
 
 while ($row = $result->fetch_assoc()) {
@@ -51,4 +38,3 @@ echo json_encode([
     "success" => true,
     "data" => $users
 ]);
-?>

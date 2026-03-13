@@ -1,25 +1,11 @@
 <?php
 
-require_once "../cors.php";
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
-session_start();
-
+require_once __DIR__ . "/_require_superadmin.php";
 require_once "../config/database.php";
 
-header('Content-Type: application/json');
-
-/* Read raw request body */
 $raw = file_get_contents("php://input");
-
-/* Decode JSON */
 $data = json_decode($raw, true);
 
-/* Debug if JSON is missing */
 if (!$data) {
     echo json_encode([
         "success" => false,
@@ -29,13 +15,12 @@ if (!$data) {
     exit();
 }
 
-$user_id = intval($data['user_id']);
+$user_id = (int)($data['user_id'] ?? 0);
 $permissions = $data['permissions'] ?? [];
 
 foreach ($permissions as $perm) {
-
-    $permission_id = intval($perm['permission_id']);
-    $allowed = intval($perm['allowed']);
+    $permission_id = (int)($perm['permission_id'] ?? 0);
+    $allowed = (int)($perm['allowed'] ?? 0);
 
     $stmt = $conn->prepare("
         INSERT INTO user_permissions (user_id, permission_id, is_allowed)

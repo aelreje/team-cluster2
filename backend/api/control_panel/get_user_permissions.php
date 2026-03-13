@@ -1,16 +1,9 @@
 <?php
 
-require_once "../cors.php";
-session_start();
-
-if (!isset($_SESSION['role_name']) || $_SESSION['role_name'] !== 'Superadmin') {
-    http_response_code(403);
-    exit();
-}
-
+require_once __DIR__ . "/_require_superadmin.php";
 require_once "../config/database.php";
 
-$user_id = $_GET['user_id'];
+$user_id = (int)($_GET['user_id'] ?? 0);
 
 $stmt = $conn->prepare("
 SELECT 
@@ -28,17 +21,14 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 
 $result = $stmt->get_result();
-
 $permissions = [];
 
 while ($row = $result->fetch_assoc()) {
-
     $permissions[] = [
         "permission_id" => $row['permission_id'],
         "permission_name" => $row['permission_name'],
         "allowed" => (int)$row['allowed']
     ];
-
 }
 
 echo json_encode([

@@ -1,13 +1,6 @@
 <?php
 
-require_once "../cors.php";
-session_start();
-
-if ($_SESSION['role_name'] !== "Superadmin") {
-    http_response_code(403);
-    exit();
-}
-
+require_once __DIR__ . "/_require_superadmin.php";
 require_once "../config/database.php";
 
 $result = $conn->query("
@@ -26,7 +19,6 @@ ORDER BY l.created_at DESC
 $logs = [];
 
 while ($row = $result->fetch_assoc()) {
-
     $logs[] = [
         "id" => $row["log_id"],
         "user" => $row["email"],
