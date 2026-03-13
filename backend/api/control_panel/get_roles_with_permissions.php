@@ -3,7 +3,7 @@ require_once __DIR__ . "/_require_superadmin.php";
 require_once "../config/database.php";
 
 $sql = "
-SELECT 
+SELECT
     r.role_id,
     r.role_name,
     p.permission_id,
@@ -15,21 +15,27 @@ ORDER BY r.role_id
 ";
 
 $result = $conn->query($sql);
-$roles = [];
+if ($result === false) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Unable to load roles and permissions"
+    ]);
+    exit();
+}
 
+$roles = [];
 while ($row = $result->fetch_assoc()) {
-    $role_id = $row['role_id'];
-    $role_name = $row['role_name'];
+    $role_id = (int)$row['role_id'];
 
     if (!isset($roles[$role_id])) {
         $roles[$role_id] = [
             "role_id" => $role_id,
-            "role_name" => $role_name,
+            "role_name" => $row['role_name'],
             "permissions" => []
         ];
     }
 
-    if ($row['permission_name']) {
+    if (!empty($row['permission_name'])) {
         $roles[$role_id]["permissions"][] = $row['permission_name'];
     }
 }

@@ -212,8 +212,9 @@ export default function ControlPanelSection() {
   };
 
   const deleteUser = async id => {
-    const data = await apiFetch(`api/control_panel/delete_user_permanently.php?employee_id=${id}`, {
-      method: "POST"
+    const data = await apiFetch("api/control_panel/delete_user_permanently.php", {
+      method: "POST",
+      body: JSON.stringify({ employee_id: id })
     });
 
     if (data.success) {

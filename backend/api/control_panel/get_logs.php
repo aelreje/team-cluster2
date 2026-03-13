@@ -4,7 +4,7 @@ require_once __DIR__ . "/_require_superadmin.php";
 require_once "../config/database.php";
 
 $result = $conn->query("
-SELECT 
+SELECT
     l.log_id,
     u.email,
     l.action,
@@ -16,12 +16,19 @@ LEFT JOIN users u
 ORDER BY l.created_at DESC
 ");
 
-$logs = [];
+if ($result === false) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Unable to load activity logs"
+    ]);
+    exit();
+}
 
+$logs = [];
 while ($row = $result->fetch_assoc()) {
     $logs[] = [
-        "id" => $row["log_id"],
-        "user" => $row["email"],
+        "id" => (int)$row["log_id"],
+        "user" => $row["email"] ?? "Unknown",
         "action" => $row["action"],
         "target" => $row["target"],
         "date" => $row["created_at"]
