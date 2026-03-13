@@ -15,7 +15,9 @@ session_start();
 
 function normalizeRole(?string $roleName): string {
     $role = strtolower(trim((string)$roleName));
-    if (str_contains($role, 'super admin')) {
+    $compactRole = str_replace([' ', '-', '_'], '', $role);
+
+    if ($compactRole === 'superadmin') {
         return 'super admin';
     }
     if ($role === 'administrator') {

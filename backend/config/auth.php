@@ -27,11 +27,26 @@ if (!isset($_SESSION['user'])) {
     exit(json_encode(["error" => "Unauthorized"]));
 }
 
+function normalizeRoleForCheck($roleName) {
+    $role = strtolower(trim((string)$roleName));
+    $compactRole = str_replace([' ', '-', '_'], '', $role);
+
+    if ($compactRole === 'superadmin') {
+        return 'super admin';
+    }
+
+    if ($compactRole === 'administrator') {
+        return 'admin';
+    }
+
+    return $role;
+}
+
 function requireRole($role) {
-    $currentRole = strtolower($_SESSION['user']['role'] ?? '');
+    $currentRole = normalizeRoleForCheck($_SESSION['user']['role'] ?? '');
 
     if (is_array($role)) {
-        $allowedRoles = array_map(fn($entry) => strtolower((string)$entry), $role);
+        $allowedRoles = array_map(fn($entry) => normalizeRoleForCheck($entry), $role);
         if (in_array($currentRole, $allowedRoles, true)) {
             return;
         }
@@ -40,7 +55,7 @@ function requireRole($role) {
         exit(json_encode(["error" => "Forbidden"]));
     }
 
-    if ($currentRole !== strtolower((string)$role)) {
+    if ($currentRole !== normalizeRoleForCheck($role)) {
         http_response_code(403);
         exit(json_encode(["error" => "Forbidden"]));
     }
