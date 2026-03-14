@@ -103,6 +103,11 @@ export default function SuperAdminDashboard() {
   const { user } = useCurrentUser();
   const { hasPermission } = usePermissions();
   const canAccessControlPanel = hasPermission("Access Control Panel");
+  const canViewEmployeeList = hasPermission("View Employee List");
+  const canAddEmployee = hasPermission("Add Employee");
+  const canEditEmployee = hasPermission("Edit Employee");
+  const canDeleteEmployee = hasPermission("Delete Employee");
+  const canAccessEmployeesTab = canViewEmployeeList || canAddEmployee || canEditEmployee || canDeleteEmployee;
   const attendanceNavItems = ["My Attendance", "All Attendance", "My Requests", "My Filing Center", "Team Request"];
   const [attendanceExpanded, setAttendanceExpanded] = useState(true);
   const isAttendanceView = activeNav === "Attendance" || attendanceNavItems.includes(activeNav);
@@ -121,7 +126,7 @@ export default function SuperAdminDashboard() {
       }))
     },
     { label: "Schedule", active: activeNav === "Schedule", onClick: () => setActiveNav("Schedule") },
-    { label: "Employees", active: activeNav === "Employees", onClick: () => setActiveNav("Employees") },
+    ...(canAccessEmployeesTab ? [{ label: "Employees", active: activeNav === "Employees", onClick: () => setActiveNav("Employees") }] : []),
     ...(canAccessControlPanel ? [{ label: "Control Panel", active: activeNav === "Control Panel", onClick: () => setActiveNav("Control Panel") }] : [])
   ];
 
@@ -130,6 +135,12 @@ export default function SuperAdminDashboard() {
       setActiveNav("Dashboard");
     }
   }, [activeNav, canAccessControlPanel]);
+
+  useEffect(() => {
+    if (!canAccessEmployeesTab && activeNav === "Employees") {
+      setActiveNav("Dashboard");
+    }
+  }, [activeNav, canAccessEmployeesTab]);
   const formatTimeRange = daySchedule => {
     if (!daySchedule || typeof daySchedule !== "object") return "—";
     return FIXED_SHIFT_LABEL;
@@ -288,8 +299,14 @@ export default function SuperAdminDashboard() {
 
   useEffect(() => {
     if (activeNav !== "Employees") return;
+    if (!canViewEmployeeList) {
+      setEmployees([]);
+      setEmployeeLoading(false);
+      setEmployeeError("");
+      return;
+    }
     fetchEmployees();
-  }, [activeNav, fetchEmployees]);
+  }, [activeNav, canViewEmployeeList, fetchEmployees]);
 
   const handleAdminTeamRequestAction = async (request, status) => {
     if (!request?.id || !request?.request_source) return;
@@ -771,22 +788,26 @@ const handleOpenRejectModal = cluster => {
                 <div className="section-title">EMPLOYEE LIST</div>
                 <div className="employee-list-count">{employees.length} Employees</div>
               </div>
-              <button
-                className="btn primary"
-                type="button"
-                onClick={() => {
-                  setAddEmployeeActiveTab("personal");
-                  setAddEmployeeError("");
-                  setIsAddEmployeeModalOpen(true);
-                }}
-              >
-                + Add Employee
-              </button>
+              {canAddEmployee ? (
+                <button
+                  className="btn primary"
+                  type="button"
+                  onClick={() => {
+                    setAddEmployeeActiveTab("personal");
+                    setAddEmployeeError("");
+                    setIsAddEmployeeModalOpen(true);
+                  }}
+                >
+                  + Add Employee
+                </button>
+              ) : null}
             </div>
 
             {employeeError && <div className="error">{employeeError}</div>}
 
-            {employeeLoading ? (
+            {!canViewEmployeeList ? (
+              <div className="empty-state">You do not have permission to view the employee list.</div>
+            ) : employeeLoading ? (
               <div className="empty-state">Loading employees...</div>
             ) : employees.length === 0 ? (
               <div className="empty-state">No employees found.</div>

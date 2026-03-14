@@ -123,6 +123,11 @@ export default function CoachDashboard() {
   const { user } = useCurrentUser();
   const { hasPermission } = usePermissions();
   const canAccessControlPanel = hasPermission("Access Control Panel");
+  const canViewEmployeeList = hasPermission("View Employee List");
+  const canAddEmployee = hasPermission("Add Employee");
+  const canEditEmployee = hasPermission("Edit Employee");
+  const canDeleteEmployee = hasPermission("Delete Employee");
+  const canAccessEmployeesTab = canViewEmployeeList || canAddEmployee || canEditEmployee || canDeleteEmployee;
   const attendanceNavItems = ["My Attendance", "Team Cluster Attendance", "My Requests", "My Filing Center", "Team Request"];
   const [attendanceExpanded, setAttendanceExpanded] = useState(true);
   const isAttendanceView = activeNav === "Attendance" || attendanceNavItems.includes(activeNav);
@@ -141,6 +146,7 @@ export default function CoachDashboard() {
       }))
     },
     { label: "Schedule", active: activeNav === "Schedule", onClick: () => setActiveNav("Schedule") },
+    ...(canAccessEmployeesTab ? [{ label: "Employees", active: activeNav === "Employees", onClick: () => setActiveNav("Employees") }] : []),
     ...(canAccessControlPanel ? [{ label: "Control Panel", active: activeNav === "Control Panel", onClick: () => setActiveNav("Control Panel") }] : [])
   ];
 
@@ -151,6 +157,12 @@ export default function CoachDashboard() {
       setActiveNav("Dashboard");
     }
   }, [activeNav, canAccessControlPanel]);
+
+  useEffect(() => {
+    if (!canAccessEmployeesTab && activeNav === "Employees") {
+      setActiveNav("Dashboard");
+    }
+  }, [activeNav, canAccessEmployeesTab]);
 
   useEffect(() => {
     if (window.location.pathname === "/coach/attendance") {
@@ -1685,6 +1697,11 @@ export default function CoachDashboard() {
                 </section>
               </div>
             )}
+          </section>
+        ) : activeNav === "Employees" ? (
+          <section className="content">
+            <div className="section-title">EMPLOYEES</div>
+            <div className="empty-state">Employee list access is now permission-based for all roles. This tab is visible based on your assigned employee permissions.</div>
           </section>
         ) : canAccessControlPanel && activeNav === "Control Panel" ? (
           <section className="content">

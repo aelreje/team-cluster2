@@ -18,7 +18,12 @@ export default function EmployeeDashboard() {
   const { user } = useCurrentUser();
   const { hasPermission } = usePermissions();
   const canAccessControlPanel = hasPermission("Access Control Panel");
-  const navItems = ["Dashboard", "Team", "Attendance", "Schedule", ...(canAccessControlPanel ? ["Control Panel"] : [])];
+  const canViewEmployeeList = hasPermission("View Employee List");
+  const canAddEmployee = hasPermission("Add Employee");
+  const canEditEmployee = hasPermission("Edit Employee");
+  const canDeleteEmployee = hasPermission("Delete Employee");
+  const canAccessEmployeesTab = canViewEmployeeList || canAddEmployee || canEditEmployee || canDeleteEmployee;
+  const navItems = ["Dashboard", "Team", "Attendance", "Schedule", ...(canAccessEmployeesTab ? ["Employees"] : []), ...(canAccessControlPanel ? ["Control Panel"] : [])];
   const attendanceNavItems = ["My Attendance", "My Requests", "My Filing Center"];
   const [data, setData] = useState([]);
   const [activeNav, setActiveNav] = useState("Dashboard");
@@ -61,6 +66,12 @@ export default function EmployeeDashboard() {
       setActiveNav("Dashboard");
     }
   }, [activeNav, canAccessControlPanel]);
+
+  useEffect(() => {
+    if (!canAccessEmployeesTab && activeNav === "Employees") {
+      setActiveNav("Dashboard");
+    }
+  }, [activeNav, canAccessEmployeesTab]);
 
   const normalizeSchedule = schedule => {
     if (!schedule) return schedule;
@@ -475,7 +486,7 @@ export default function EmployeeDashboard() {
             <div className="empty-state">No team cluster details available.</div>
           )}
 
-          {(isAttendanceView || data.length > 0) && activeNav !== "Dashboard" && (
+          {((isAttendanceView || data.length > 0 || activeNav === "Employees" || activeNav === "Control Panel") && activeNav !== "Dashboard") && (
             <div className="employee-panel">
               {activeNav === "My Attendance" && (
                 <div className="employee-card">
@@ -505,11 +516,15 @@ export default function EmployeeDashboard() {
                 <FilingCenterPanel onSubmitted={() => fetchMyRequests().then(response => setMyRequests(Array.isArray(response) ? response : [])).catch(() => setMyRequests([]))} />
               )}
 
+              {activeNav === "Employees" && (
+                <div className="empty-state">Employee list access is now permission-based for all roles. This tab is shown based on your employee permissions.</div>
+              )}
+
               {canAccessControlPanel && activeNav === "Control Panel" && (
                 <ControlPanelSection />
               )}
 
-              {!isAttendanceView && activeNav !== "Control Panel" && (
+              {!isAttendanceView && activeNav !== "Control Panel" && activeNav !== "Employees" && (
                 <>
               <div className="employee-card">
                 <div className="employee-card-header">

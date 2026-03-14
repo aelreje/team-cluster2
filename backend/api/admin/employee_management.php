@@ -2,8 +2,77 @@
 include __DIR__ . "/../../config/database.php";
 include __DIR__ . "/../../config/auth.php";
 
-requireRole("super admin");
 
+
+function resolveEffectivePermissions(mysqli $conn, int $userId): array {
+    $permissions = [];
+
+    $roleStmt = $conn->prepare(
+        "SELECT DISTINCT p.permission_name
+         FROM users u
+         INNER JOIN role_permissions rp ON rp.role_id = u.role_id
+         INNER JOIN permissions p ON p.permission_id = rp.permission_id
+         WHERE u.user_id = ?"
+    );
+
+    if ($roleStmt) {
+        $roleStmt->bind_param("i", $userId);
+        if ($roleStmt->execute()) {
+            $result = $roleStmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $name = trim((string)($row['permission_name'] ?? ''));
+                if ($name !== '') {
+                    $permissions[$name] = true;
+                }
+            }
+        }
+    }
+
+    $overrideStmt = $conn->prepare(
+        "SELECT p.permission_name, up.is_allowed
+         FROM user_permissions up
+         INNER JOIN permissions p ON p.permission_id = up.permission_id
+         WHERE up.user_id = ?"
+    );
+
+    if ($overrideStmt) {
+        $overrideStmt->bind_param("i", $userId);
+        if ($overrideStmt->execute()) {
+            $result = $overrideStmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $name = trim((string)($row['permission_name'] ?? ''));
+                if ($name === '') continue;
+                $isAllowed = (int)($row['is_allowed'] ?? 0) === 1;
+
+                if ($isAllowed) {
+                    $permissions[$name] = true;
+                } else {
+                    unset($permissions[$name]);
+                }
+            }
+        }
+    }
+
+    return array_keys($permissions);
+}
+
+function requireAnyPermission(mysqli $conn, array $permissionNames): void {
+    $userId = (int)($_SESSION['user']['id'] ?? 0);
+    if ($userId <= 0) {
+        http_response_code(401);
+        exit(json_encode(["error" => "Unauthorized"]));
+    }
+
+    $permissions = resolveEffectivePermissions($conn, $userId);
+    foreach ($permissionNames as $permissionName) {
+        if (in_array($permissionName, $permissions, true)) {
+            return;
+        }
+    }
+
+    http_response_code(403);
+    exit(json_encode(["error" => "Forbidden"]));
+}
 function resolveEmployeeRoleId(mysqli $conn): ?int {
     $stmt = $conn->prepare("SELECT role_id FROM roles WHERE LOWER(role_name) LIKE '%employee%' LIMIT 1");
     if (!$stmt) return null;
@@ -15,6 +84,7 @@ function resolveEmployeeRoleId(mysqli $conn): ?int {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    requireAnyPermission($conn, ['View Employee List']);
     $sql = "SELECT
                 e.employee_id,
                 CONCAT_WS(' ', e.first_name, e.middle_name, e.last_name) AS fullname,
@@ -56,6 +126,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     exit(json_encode(["success" => false, "message" => "Method not allowed."]));
 }
+
+requireAnyPermission($conn, ['Add Employee']);
 
 $data = json_decode(file_get_contents("php://input"), true);
 if (!$data || !is_array($data)) {
