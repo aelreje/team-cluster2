@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 12, 2026 at 07:29 AM
+-- Generation Time: Mar 14, 2026 at 05:34 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -174,11 +174,13 @@ CREATE TABLE `employees` (
 --
 
 INSERT INTO `employees` (`employee_id`, `user_id`, `permission_id`, `first_name`, `middle_name`, `last_name`, `address`, `birthdate`, `civil_status`, `email`, `personal_email`, `position`, `account`, `cluster_id`, `contact_number`, `employment_status`, `employee_type`, `date_hired`, `archived`) VALUES
-(1, 1, NULL, 'admin', NULL, NULL, NULL, NULL, NULL, 'admin@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(1, 1, 11, 'admin', NULL, NULL, NULL, NULL, NULL, 'admin@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (2, 2, NULL, 'employee1', NULL, NULL, NULL, NULL, NULL, 'employee1@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (3, 3, NULL, 'employee2', NULL, NULL, NULL, NULL, NULL, 'employee2@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (4, 4, NULL, 'teamcoach', NULL, NULL, NULL, NULL, NULL, 'teamcoach@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(5, 5, NULL, 'superadmin', NULL, NULL, NULL, NULL, NULL, 'superadmin@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+(5, 5, 11, 'superadmin', NULL, NULL, NULL, NULL, NULL, 'superadmin@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(6, 6, NULL, 'Jaden', 'Culajara', 'Rivera', 'Bacolod City', '2001-11-11', 'Single', 'jaden@ireply.com', 'jadenr211@gmail.com', '', '', NULL, '09919074824', 'Active', '', '2026-03-12', NULL),
+(7, 7, NULL, 'Gil', '', 'Rivera', 'Bacolod City', '2001-11-11', 'Single', 'gil@ireply.com', 'gil@gmail.com', 'President', 'iReply Back Office Services', NULL, '1234567899', 'Active', 'Regular', '2026-03-13', NULL);
 
 -- --------------------------------------------------------
 
@@ -322,14 +324,23 @@ INSERT INTO `role_permissions` (`role_id`, `permission_id`) VALUES
 (2, 8),
 (2, 9),
 (2, 10),
+(2, 11),
+(3, 4),
 (3, 5),
 (3, 6),
 (3, 7),
 (3, 8),
-(3, 9),
+(4, 1),
+(4, 2),
+(4, 3),
+(4, 4),
+(4, 5),
 (4, 6),
 (4, 7),
-(4, 8);
+(4, 8),
+(4, 9),
+(4, 10),
+(4, 11);
 
 -- --------------------------------------------------------
 
@@ -404,7 +415,9 @@ INSERT INTO `users` (`user_id`, `email`, `password`, `role_id`, `created_at`) VA
 (2, 'employee1@mail.com', '$2y$10$HihsMObCq5kTRn82H9zMy.VPYkmusyui8FUXb1eLcyyiaVYJEDEbG', 4, '2026-03-12 12:30:53'),
 (3, 'employee2@mail.com', '$2y$10$ZjZ1ITpHrnWwTyaqhUUGq.2LPv4nuweE8PtHo9/TW8qUHtb9EEkfO', 4, '2026-03-12 12:31:02'),
 (4, 'teamcoach@mail.com', '$2y$10$ue0g1ssRSbj.5owx93p1ZugfJRQvP/D30IOZgerLKkwrjKLFYNFNi', 3, '2026-03-12 12:31:11'),
-(5, 'superadmin@mail.com', '$2y$10$OBqptfoQCjK5.Mo9g7JoyuE0TCwQi227inQ79Ef/SbXwJm2dBENxi', 1, '2026-03-12 12:55:42');
+(5, 'superadmin@mail.com', '$2y$10$OBqptfoQCjK5.Mo9g7JoyuE0TCwQi227inQ79Ef/SbXwJm2dBENxi', 1, '2026-03-12 12:55:42'),
+(6, 'jaden@ireply.com', '$2y$10$a6VE700gVy9TIZbQVmwAheXx.MnHkkA7uGF/VlEJnBevpVSvg.Z32', 4, '2026-03-12 16:25:42'),
+(7, 'gil@ireply.com', '$2y$10$CRbJZwEufyD1lGwlDOh..OQPOx/B4j.wBkpchR5MAvJu4rpEfUm4m', 4, NULL);
 
 -- --------------------------------------------------------
 
@@ -418,13 +431,6 @@ CREATE TABLE `user_permissions` (
   `permission_id` int(11) DEFAULT NULL,
   `is_allowed` tinyint(1) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `user_permissions`
---
-
-INSERT INTO `user_permissions` (`Id`, `user_id`, `permission_id`, `is_allowed`) VALUES
-(1, 1, 11, 1);
 
 --
 -- Indexes for dumped tables
@@ -608,7 +614,7 @@ ALTER TABLE `clusters`
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `employee_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `employee_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `holidays`
@@ -656,13 +662,13 @@ ALTER TABLE `time_logs`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `user_permissions`
 --
 ALTER TABLE `user_permissions`
-  MODIFY `Id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `Id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- Constraints for dumped tables
