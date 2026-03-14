@@ -822,6 +822,7 @@ const handleOpenRejectModal = cluster => {
                   <div>Status</div>
                   <div>Hired</div>
                   <div>Info</div>
+                  <div className="employee-actions-cell">Actions</div>
                 </div>
                 {employees.map(employee => (
                   <div key={employee.id} className="table-row employee-list-row">
@@ -833,6 +834,12 @@ const handleOpenRejectModal = cluster => {
                     <div className="table-cell">{employee.employment_status || "—"}</div>
                     <div className="table-cell">{formatDate(employee.date_hired)}</div>
                     <div className="table-cell muted">{employee.email || "—"}</div>
+                    <div className="table-cell employee-actions-cell">
+                      <div className="employee-actions" role="group" aria-label={`Actions for ${employee.fullname || employee.email || "employee"}`}>
+                        <button className="btn secondary" type="button">Edit</button>
+                        <button className="btn danger" type="button">Delete</button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
