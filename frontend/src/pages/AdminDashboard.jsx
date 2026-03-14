@@ -9,6 +9,7 @@ import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighligh
 import FilingCenterPanel from "../components/FilingCenterPanel";
 import DataPanel from "../components/DataPanel";
 import ControlPanelSection from "../components/ControlPanelSection";
+import EmployeesSection from "../components/EmployeesSection";
 import { buildRequestHighlights, fetchAdminTeamRequests, fetchMyRequests, updateAdminTeamRequestStatus } from "../api/requests";
 
 export default function AdminDashboard() {
@@ -676,10 +677,7 @@ const handleOpenRejectModal = cluster => {
             />
           </section>
         ) : activeNav === "Employees" ? (
-          <section className="content">
-            <div className="section-title">EMPLOYEES</div>
-            <div className="empty-state">Employee list access is now permission-based for all roles. Use the Employees tab from your dashboard based on your granted permissions.</div>
-          </section>
+          <EmployeesSection />
         ) : activeNav === "Schedule" ? (
           <section className="content">
             <div className="section-title">Team Coach Schedule</div>

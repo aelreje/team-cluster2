@@ -7,6 +7,7 @@ import ControlPanelSection from "../components/ControlPanelSection";
 import AttendanceHistoryHighlights from "../components/AttendanceHistoryHighlights";
 import FilingCenterPanel from "../components/FilingCenterPanel";
 import DataPanel from "../components/DataPanel";
+import EmployeesSection from "../components/EmployeesSection";
 import { buildRequestHighlights, fetchMyRequests } from "../api/requests";
 import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
@@ -517,7 +518,7 @@ export default function EmployeeDashboard() {
               )}
 
               {activeNav === "Employees" && (
-                <div className="empty-state">Employee list access is now permission-based for all roles. This tab is shown based on your employee permissions.</div>
+                <EmployeesSection />
               )}
 
               {canAccessControlPanel && activeNav === "Control Panel" && (

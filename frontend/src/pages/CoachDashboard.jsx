@@ -7,6 +7,7 @@ import MainDashboard from "./MainDashboard";
 import FilingCenterPanel from "../components/FilingCenterPanel";
 import DataPanel from "../components/DataPanel";
 import ControlPanelSection from "../components/ControlPanelSection";
+import EmployeesSection from "../components/EmployeesSection";
 import { buildRequestHighlights, fetchMyRequests, fetchTeamRequests, updateTeamRequestStatus } from "../api/requests";
 import useLiveDateTime from "../hooks/useLiveDateTime";
 import useCurrentUser from "../hooks/useCurrentUser";
@@ -1699,10 +1700,7 @@ export default function CoachDashboard() {
             )}
           </section>
         ) : activeNav === "Employees" ? (
-          <section className="content">
-            <div className="section-title">EMPLOYEES</div>
-            <div className="empty-state">Employee list access is now permission-based for all roles. This tab is visible based on your assigned employee permissions.</div>
-          </section>
+          <EmployeesSection />
         ) : canAccessControlPanel && activeNav === "Control Panel" ? (
           <section className="content">
             <ControlPanelSection />
