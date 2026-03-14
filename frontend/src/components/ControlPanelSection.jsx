@@ -157,7 +157,7 @@ export default function ControlPanelSection() {
     if (!user) return;
 
     try {
-      const response = await apiFetch("api/admin/control_panel_permissions.php", {
+      const response = await apiFetch("api/admin/control_panel_user_permissions.php", {
         method: "POST",
         body: JSON.stringify({
           user_id: user.userId,

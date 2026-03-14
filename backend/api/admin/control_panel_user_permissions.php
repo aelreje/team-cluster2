@@ -4,61 +4,6 @@ include __DIR__ . "/../../config/auth.php";
 
 requireRole(["super admin", "admin"]);
 
-function getAllPermissions(mysqli $conn): array {
-    $result = $conn->query("SELECT permission_id, permission_name FROM permissions ORDER BY permission_id ASC");
-    if (!$result) {
-        return [];
-    }
-
-    $permissions = [];
-    while ($row = $result->fetch_assoc()) {
-        $permissions[] = [
-            'id' => (int)$row['permission_id'],
-            'name' => (string)$row['permission_name']
-        ];
-    }
-
-    return $permissions;
-}
-
-function getRolePermissions(mysqli $conn): array {
-    $sql = "SELECT r.role_id,
-                   r.role_name,
-                   COALESCE(r.role_description, '') AS role_description,
-                   p.permission_id,
-                   p.permission_name
-            FROM roles r
-            LEFT JOIN role_permissions rp ON rp.role_id = r.role_id
-            LEFT JOIN permissions p ON p.permission_id = rp.permission_id
-            ORDER BY r.role_id ASC, p.permission_id ASC";
-
-    $result = $conn->query($sql);
-    if (!$result) {
-        return [];
-    }
-
-    $roleMap = [];
-    while ($row = $result->fetch_assoc()) {
-        $roleId = (int)$row['role_id'];
-        if (!isset($roleMap[$roleId])) {
-            $roleMap[$roleId] = [
-                'id' => $roleId,
-                'role' => (string)$row['role_name'],
-                'description' => (string)$row['role_description'],
-                'permissionIds' => [],
-                'permissions' => []
-            ];
-        }
-
-        if (!empty($row['permission_id'])) {
-            $roleMap[$roleId]['permissionIds'][] = (int)$row['permission_id'];
-            $roleMap[$roleId]['permissions'][] = (string)$row['permission_name'];
-        }
-    }
-
-    return array_values($roleMap);
-}
-
 function buildDisplayName(array $row): string {
     $name = trim(implode(' ', array_filter([
         trim((string)($row['first_name'] ?? '')),
@@ -175,14 +120,33 @@ function getUserPermissions(mysqli $conn): array {
     return array_values($userMap);
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    echo json_encode([
-        'success' => true,
-        'permissionOptions' => getAllPermissions($conn),
-        'rolePermissions' => getRolePermissions($conn),
-        'userPermissions' => getUserPermissions($conn)
-    ]);
-    exit;
+function getRolePermissionIdMap(mysqli $conn, int $userId): array {
+    $stmt = $conn->prepare(
+        "SELECT rp.permission_id
+         FROM users u
+         INNER JOIN role_permissions rp ON rp.role_id = u.role_id
+         WHERE u.user_id = ?"
+    );
+
+    if (!$stmt) {
+        throw new Exception('Failed to prepare role permission lookup statement');
+    }
+
+    $stmt->bind_param("i", $userId);
+    if (!$stmt->execute()) {
+        throw new Exception('Failed to execute role permission lookup');
+    }
+
+    $result = $stmt->get_result();
+    $permissionMap = [];
+    while ($row = $result->fetch_assoc()) {
+        $permissionId = (int)($row['permission_id'] ?? 0);
+        if ($permissionId > 0) {
+            $permissionMap[$permissionId] = true;
+        }
+    }
+
+    return $permissionMap;
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -192,12 +156,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $payload = json_decode(file_get_contents('php://input'), true);
-$roleId = (int)($payload['role_id'] ?? 0);
+$userId = (int)($payload['user_id'] ?? 0);
 $permissionIds = $payload['permission_ids'] ?? null;
 
-if ($roleId <= 0 || !is_array($permissionIds)) {
+if ($userId <= 0 || !is_array($permissionIds)) {
     http_response_code(400);
-    echo json_encode(['error' => 'role_id and permission_ids are required']);
+    echo json_encode(['error' => 'user_id and permission_ids are required']);
     exit;
 }
 
@@ -213,28 +177,43 @@ $cleanPermissionIds = array_keys($cleanPermissionIds);
 $conn->begin_transaction();
 
 try {
-    if ($roleId > 0) {
-        $deleteStmt = $conn->prepare("DELETE FROM role_permissions WHERE role_id = ?");
-        if (!$deleteStmt) {
-            throw new Exception('Failed to prepare delete statement');
-        }
+    $deleteStmt = $conn->prepare("DELETE FROM user_permissions WHERE user_id = ?");
+    if (!$deleteStmt) {
+        throw new Exception('Failed to prepare user permission delete statement');
+    }
 
-        $deleteStmt->bind_param("i", $roleId);
-        if (!$deleteStmt->execute()) {
-            throw new Exception('Failed to clear role permissions');
+    $deleteStmt->bind_param("i", $userId);
+    if (!$deleteStmt->execute()) {
+        throw new Exception('Failed to clear user permissions');
+    }
+
+    $rolePermissionMap = getRolePermissionIdMap($conn, $userId);
+    $selectedPermissionMap = array_fill_keys($cleanPermissionIds, true);
+
+    $overrideRows = [];
+
+    foreach ($selectedPermissionMap as $permissionId => $_) {
+        if (!isset($rolePermissionMap[$permissionId])) {
+            $overrideRows[] = [(int)$permissionId, 1];
         }
     }
 
-    if (count($cleanPermissionIds) > 0) {
-        $insertStmt = $conn->prepare("INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)");
+    foreach ($rolePermissionMap as $permissionId => $_) {
+        if (!isset($selectedPermissionMap[$permissionId])) {
+            $overrideRows[] = [(int)$permissionId, 0];
+        }
+    }
+
+    if (count($overrideRows) > 0) {
+        $insertStmt = $conn->prepare("INSERT INTO user_permissions (user_id, permission_id, is_allowed) VALUES (?, ?, ?)");
         if (!$insertStmt) {
-            throw new Exception('Failed to prepare insert statement');
+            throw new Exception('Failed to prepare user permission insert statement');
         }
 
-        foreach ($cleanPermissionIds as $permissionId) {
-            $insertStmt->bind_param("ii", $roleId, $permissionId);
+        foreach ($overrideRows as [$permissionId, $isAllowed]) {
+            $insertStmt->bind_param("iii", $userId, $permissionId, $isAllowed);
             if (!$insertStmt->execute()) {
-                throw new Exception('Failed to save role permissions');
+                throw new Exception('Failed to save user permissions');
             }
         }
     }
@@ -243,7 +222,6 @@ try {
 
     echo json_encode([
         'success' => true,
-        'rolePermissions' => getRolePermissions($conn),
         'userPermissions' => getUserPermissions($conn)
     ]);
 } catch (Throwable $error) {
