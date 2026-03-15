@@ -195,6 +195,11 @@ export default function ControlPanelSection() {
     }
   };
 
+  const showRolePermissions = activeTab === "role";
+  const showIndividualAccess = activeTab === "individual";
+  const showLogs = activeTab === "logs";
+  const showUserArchives = activeTab === "userArchives";
+
   return (
     <section className="control-panel-content" aria-label="Control panel permission editor">
       <header className="control-panel-header">
@@ -204,22 +209,40 @@ export default function ControlPanelSection() {
 
       <div className="control-panel-tabs" role="tablist" aria-label="Permission view mode">
         <button
-          className={`control-panel-tab${activeTab === "role" ? " active" : ""}`}
+          className={`control-panel-tab${showRolePermissions ? " active" : ""}`}
           type="button"
           role="tab"
-          aria-selected={activeTab === "role"}
+          aria-selected={showRolePermissions}
           onClick={() => setActiveTab("role")}
         >
           By Role
         </button>
         <button
-          className={`control-panel-tab${activeTab === "individual" ? " active" : ""}`}
+          className={`control-panel-tab${showIndividualAccess ? " active" : ""}`}
           type="button"
           role="tab"
-          aria-selected={activeTab === "individual"}
+          aria-selected={showIndividualAccess}
           onClick={() => setActiveTab("individual")}
         >
           Individual Access
+        </button>
+        <button
+          className={`control-panel-tab${showLogs ? " active" : ""}`}
+          type="button"
+          role="tab"
+          aria-selected={showLogs}
+          onClick={() => setActiveTab("logs")}
+        >
+          Logs
+        </button>
+        <button
+          className={`control-panel-tab${showUserArchives ? " active" : ""}`}
+          type="button"
+          role="tab"
+          aria-selected={showUserArchives}
+          onClick={() => setActiveTab("userArchives")}
+        >
+          User Archives
         </button>
       </div>
 
@@ -228,10 +251,12 @@ export default function ControlPanelSection() {
         type="search"
         value={searchTerm}
         onChange={event => setSearchTerm(event.target.value)}
-        placeholder={activeTab === "role" ? "Search role or permission..." : "Search user, role, or permission..."}
+        placeholder={showRolePermissions
+          ? "Search role or permission..."
+          : "Search user, role, or permission..."}
       />
 
-      {activeTab === "role" ? (
+      {showRolePermissions ? (
         loadingRolePermissions ? (
           <p className="team-empty-note">Loading role permissions...</p>
         ) : (
@@ -258,7 +283,7 @@ export default function ControlPanelSection() {
             ))}
           </div>
         )
-      ) : (
+      ) : showIndividualAccess ? (
         <div className="control-panel-table-wrap" role="table" aria-label="Individual permission table">
           <div className="control-panel-table-header" role="row">
             <span role="columnheader">ID</span>
@@ -289,6 +314,10 @@ export default function ControlPanelSection() {
             </div>
           ))}
         </div>
+        ) : showLogs ? (
+        <p className="team-empty-note">Logs tab is ready for activity history content.</p>
+      ) : (
+        <p className="team-empty-note">User Archives tab is ready for archived user records.</p>
       )}
 
       {editingRole ? (
