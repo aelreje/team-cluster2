@@ -552,6 +552,7 @@ const handleOpenRejectModal = cluster => {
         {activeNav === "Dashboard" ? (
           <section className="content">
             <MainDashboard
+              showMemberStatusCard
               schedule={adminMainDashboardSchedule}
               dashboardMeta={{
                 scheduleTag: "Fixed schedule",
