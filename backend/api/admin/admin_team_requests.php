@@ -88,8 +88,7 @@ if ($usersIdColumn !== null && $userDisplayColumn !== null) {
 
 $items = [];
 
-$loadRequests = function (string $table, string $idColumn, string $typeColumn, string $detailsColumn, string $scheduleExpr, string $alias, string $defaultType) use ($conn, $clusterIdColumn, $clusterOwnerColumn, $requestEmployeeExpr, $employeeJoinSql, $userJoinSql, $employeeNameExpr, $excludeRequesterCondition, &$items) {
-    $sql = "SELECT DISTINCT
+$loadRequests = function (string $table, string $idColumn, string $typeColumn, string $detailsColumn, string $scheduleExpr, string $alias, string $defaultType) use ($conn, $clusterIdColumn, $clusterOwnerColumn, $requestEmployeeExpr, $employeeJoinSql, $userJoinSql, $employeeNameExpr, $excludeRequesterCondition, $requestEmployeeReference, $sessionUserId, $currentEmployeeId, &$items) {
                 req.$idColumn AS source_id,
                 req.created_at AS filed_at,
                 req.$typeColumn AS request_type,
@@ -127,6 +126,7 @@ $loadRequests = function (string $table, string $idColumn, string $typeColumn, s
             'employee_id' => (int)$row['employee_id'],
             'employee_name' => $row['employee_name'] ?: 'Employee',
             'cluster_id' => isset($row['cluster_id']) ? (int)$row['cluster_id'] : null,
+            'can_review' => ((int)$row['employee_id']) !== ($requestEmployeeReference === 'users' ? $sessionUserId : $currentEmployeeId),
             'cluster_name' => $row['cluster_name'] ?: '—'
         ];
     }

@@ -208,7 +208,8 @@ export default function DataPanel({
                     const allowedStatuses = Array.isArray(action.allowedStatuses)
                       ? action.allowedStatuses.map(value => String(value).toLowerCase())
                       : ["pending"];
-                    const isEnabled = allowedStatuses.some(status => currentStatus.includes(status));
+                    const canReview = item.can_review !== false;
+                    const isEnabled = canReview && allowedStatuses.some(status => currentStatus.includes(status));
 
                     return (
                       <button
