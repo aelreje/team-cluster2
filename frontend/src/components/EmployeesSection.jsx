@@ -284,8 +284,8 @@ export default function EmployeesSection() {
     setDeletingEmployeeId(employee.id);
     setEmployeeError("");
     try {
-      await apiFetch("api/admin/employee_management.php", {
-        method: "DELETE",
+      await apiFetch("api/admin/control_panel/archive_user.php", {
+        method: "POST",
         body: JSON.stringify({ employee_id: employee.id })
       });
       await fetchEmployees();

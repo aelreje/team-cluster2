@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../api/api";
 
-
 function PermissionEditorModal({ title, selectedPermissionIds, permissionOptions, onClose, onSave, isSaving = false, errorMessage = "" }) {
   const [draftPermissionIds, setDraftPermissionIds] = useState(selectedPermissionIds);
 
@@ -18,8 +17,6 @@ function PermissionEditorModal({ title, selectedPermissionIds, permissionOptions
     });
   };
 
-  const handleSave = () => onSave(draftPermissionIds);
-
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={`${title} permission editor`}>
       <div className="modal-card permission-modal">
@@ -29,11 +26,7 @@ function PermissionEditorModal({ title, selectedPermissionIds, permissionOptions
         <div className="permission-modal-list" role="group" aria-label="Permission options">
           {permissionOptions.map(permission => (
             <label key={permission.id} className="permission-modal-item">
-              <input
-                type="checkbox"
-                checked={draftPermissionIds.includes(permission.id)}
-                onChange={() => togglePermission(permission.id)}
-              />
+              <input type="checkbox" checked={draftPermissionIds.includes(permission.id)} onChange={() => togglePermission(permission.id)} />
               <span>{permission.name}</span>
             </label>
           ))}
@@ -41,7 +34,7 @@ function PermissionEditorModal({ title, selectedPermissionIds, permissionOptions
 
         <div className="permission-modal-actions">
           <button className="btn secondary" type="button" onClick={onClose} disabled={isSaving}>Cancel</button>
-          <button className="btn permission-save-btn" type="button" onClick={handleSave} disabled={isSaving}>
+          <button className="btn permission-save-btn" type="button" onClick={() => onSave(draftPermissionIds)} disabled={isSaving}>
             {isSaving ? "Saving..." : "Save"}
           </button>
         </div>
@@ -63,22 +56,33 @@ export default function ControlPanelSection() {
   const [loadingRolePermissions, setLoadingRolePermissions] = useState(true);
   const [savingUserPermissions, setSavingUserPermissions] = useState(false);
   const [userSaveError, setUserSaveError] = useState("");
+
   const [archivedUsers, setArchivedUsers] = useState([]);
   const [loadingArchivedUsers, setLoadingArchivedUsers] = useState(false);
   const [archivedUsersError, setArchivedUsersError] = useState("");
   const [archiveActionEmployeeId, setArchiveActionEmployeeId] = useState(null);
+
+  const [logs, setLogs] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logsError, setLogsError] = useState("");
+
+  const showRolePermissions = activeTab === "role";
+  const showIndividualAccess = activeTab === "individual";
+  const showLogs = activeTab === "logs";
+  const showUserArchives = activeTab === "userArchives";
 
   useEffect(() => {
     let mounted = true;
 
     const loadControlPanelPermissions = async () => {
       try {
-        const response = await apiFetch("api/admin/control_panel_permissions.php");
+        const response = await apiFetch("api/admin/control_panel/permissions.php");
         if (!mounted) return;
 
         const options = Array.isArray(response.permissionOptions) ? response.permissionOptions : [];
         const roles = Array.isArray(response.rolePermissions) ? response.rolePermissions : [];
         const users = Array.isArray(response.userPermissions) ? response.userPermissions : [];
+
         setPermissionOptions(options.map(item => ({ id: item.id, name: item.name })));
         setRolePermissions(roles.map(role => ({
           id: String(role.id),
@@ -107,44 +111,17 @@ export default function ControlPanelSection() {
     };
 
     loadControlPanelPermissions();
-
     return () => {
       mounted = false;
     };
   }, []);
 
-  const filteredRoles = useMemo(() => {
-    const value = searchTerm.trim().toLowerCase();
-    if (!value) return rolePermissions;
-
-    return rolePermissions.filter(item => {
-      return item.role.toLowerCase().includes(value)
-        || item.description.toLowerCase().includes(value)
-        || item.permissions.some(permission => permission.toLowerCase().includes(value));
-    });
-  }, [rolePermissions, searchTerm]);
-
-  const filteredUsers = useMemo(() => {
-    const value = searchTerm.trim().toLowerCase();
-    if (!value) return userPermissions;
-
-    return userPermissions.filter(item => {
-      return item.name.toLowerCase().includes(value)
-        || item.role.toLowerCase().includes(value)
-        || item.email.toLowerCase().includes(value)
-        || item.permissions.some(permission => permission.toLowerCase().includes(value));
-    });
-  }, [userPermissions, searchTerm]);
-
-  const editingRole = rolePermissions.find(item => item.id === editingRoleId);
-  const editingUser = userPermissions.find(item => item.id === editingUserId);
-
   const fetchArchivedUsers = async () => {
     setLoadingArchivedUsers(true);
     setArchivedUsersError("");
     try {
-      const response = await apiFetch("api/admin/employee_management.php?archived=1");
-      setArchivedUsers(Array.isArray(response) ? response : []);
+      const response = await apiFetch("api/admin/control_panel/get_archived_users.php");
+      setArchivedUsers(Array.isArray(response?.users) ? response.users : []);
     } catch (error) {
       setArchivedUsers([]);
       setArchivedUsersError(error?.error ?? error?.message ?? "Unable to load archived users.");
@@ -153,22 +130,83 @@ export default function ControlPanelSection() {
     }
   };
 
+  const fetchLogs = async () => {
+    setLoadingLogs(true);
+    setLogsError("");
+    try {
+      const response = await apiFetch("api/admin/control_panel/get_logs.php");
+      setLogs(Array.isArray(response?.logs) ? response.logs : []);
+    } catch (error) {
+      setLogs([]);
+      setLogsError(error?.error ?? error?.message ?? "Unable to load logs.");
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
   useEffect(() => {
-    if (!showUserArchives) return;
-    fetchArchivedUsers();
+    if (showUserArchives) {
+      fetchArchivedUsers();
+    }
   }, [showUserArchives]);
+
+  useEffect(() => {
+    if (showLogs) {
+      fetchLogs();
+    }
+  }, [showLogs]);
+
+  const filteredRoles = useMemo(() => {
+    const value = searchTerm.trim().toLowerCase();
+    if (!value) return rolePermissions;
+    return rolePermissions.filter(item => item.role.toLowerCase().includes(value)
+      || item.description.toLowerCase().includes(value)
+      || item.permissions.some(permission => permission.toLowerCase().includes(value)));
+  }, [rolePermissions, searchTerm]);
+
+  const filteredUsers = useMemo(() => {
+    const value = searchTerm.trim().toLowerCase();
+    if (!value) return userPermissions;
+    return userPermissions.filter(item => item.name.toLowerCase().includes(value)
+      || item.role.toLowerCase().includes(value)
+      || item.email.toLowerCase().includes(value)
+      || item.permissions.some(permission => permission.toLowerCase().includes(value)));
+  }, [userPermissions, searchTerm]);
+
+  const filteredArchivedUsers = useMemo(() => {
+    const value = searchTerm.trim().toLowerCase();
+    if (!value) return archivedUsers;
+    return archivedUsers.filter(item => {
+      const fullName = String(item.fullname ?? "").toLowerCase();
+      const email = String(item.email ?? "").toLowerCase();
+      const position = String(item.position ?? "").toLowerCase();
+      return fullName.includes(value)
+        || email.includes(value)
+        || position.includes(value)
+        || String(item.id ?? "").toLowerCase().includes(value);
+    });
+  }, [archivedUsers, searchTerm]);
+
+  const filteredLogs = useMemo(() => {
+    const value = searchTerm.trim().toLowerCase();
+    if (!value) return logs;
+    return logs.filter(item => String(item.user ?? "").toLowerCase().includes(value)
+      || String(item.action ?? "").toLowerCase().includes(value)
+      || String(item.target ?? "").toLowerCase().includes(value)
+      || String(item.created_at ?? "").toLowerCase().includes(value));
+  }, [logs, searchTerm]);
+
+  const editingRole = rolePermissions.find(item => item.id === editingRoleId);
+  const editingUser = userPermissions.find(item => item.id === editingUserId);
 
   const handleSaveRolePermissions = async permissionIds => {
     const role = rolePermissions.find(item => item.id === editingRoleId);
     if (!role) return;
 
     try {
-      const response = await apiFetch("api/admin/control_panel_permissions.php", {
+      const response = await apiFetch("api/admin/control_panel/permissions.php", {
         method: "POST",
-        body: JSON.stringify({
-          role_id: role.roleId,
-          permission_ids: permissionIds
-        })
+        body: JSON.stringify({ role_id: role.roleId, permission_ids: permissionIds })
       });
 
       const roles = Array.isArray(response.rolePermissions) ? response.rolePermissions : [];
@@ -193,12 +231,9 @@ export default function ControlPanelSection() {
     setUserSaveError("");
 
     try {
-      const response = await apiFetch("api/admin/control_panel_user_permissions.php", {
+      const response = await apiFetch("api/admin/control_panel/user_permissions.php", {
         method: "POST",
-        body: JSON.stringify({
-          user_id: user.userId,
-          permission_ids: permissionIds
-        })
+        body: JSON.stringify({ user_id: user.userId, permission_ids: permissionIds })
       });
 
       const users = Array.isArray(response.userPermissions) ? response.userPermissions : [];
@@ -211,65 +246,33 @@ export default function ControlPanelSection() {
         permissions: Array.isArray(item.permissions) ? item.permissions : []
       })));
       setEditingUserId("");
-      } catch (error) {
+    } catch (error) {
       setUserSaveError(error?.error ?? "Unable to save user permissions.");
     } finally {
       setSavingUserPermissions(false);
     }
   };
 
-  const filteredArchivedUsers = useMemo(() => {
-    const value = searchTerm.trim().toLowerCase();
-    if (!value) return archivedUsers;
-
-    return archivedUsers.filter(item => {
-      const fullName = String(item.fullname ?? "").toLowerCase();
-      const email = String(item.email ?? "").toLowerCase();
-      const position = String(item.position ?? "").toLowerCase();
-      const status = String(item.employment_status ?? "").toLowerCase();
-
-      return fullName.includes(value)
-        || email.includes(value)
-        || position.includes(value)
-        || status.includes(value)
-        || String(item.id ?? "").toLowerCase().includes(value);
-    });
-  }, [archivedUsers, searchTerm]);
-
-  const handleArchiveAction = async (employeeId, action) => {
-    const isRestore = action === "restore";
-    const confirmationMessage = isRestore
-      ? "Restore this archived user?"
-      : "Permanently delete this archived user record? This cannot be undone.";
-
-    if (!window.confirm(confirmationMessage)) {
-      return;
-    }
+  const handleArchiveAction = async (employeeId, endpointName, confirmMessage) => {
+    if (!window.confirm(confirmMessage)) return;
 
     setArchiveActionEmployeeId(employeeId);
     setArchivedUsersError("");
 
     try {
-      await apiFetch("api/admin/employee_management.php", {
-        method: "PATCH",
-        body: JSON.stringify({
-          employee_id: employeeId,
-          action
-        })
+      await apiFetch(`api/admin/control_panel/${endpointName}.php`, {
+        method: "POST",
+        body: JSON.stringify({ employee_id: employeeId })
       });
 
       setArchivedUsers(current => current.filter(item => item.id !== employeeId));
+      await fetchLogs();
     } catch (error) {
       setArchivedUsersError(error?.error ?? error?.message ?? "Unable to update archived user.");
     } finally {
       setArchiveActionEmployeeId(null);
     }
   };
-
-  const showRolePermissions = activeTab === "role";
-  const showIndividualAccess = activeTab === "individual";
-  const showLogs = activeTab === "logs";
-  const showUserArchives = activeTab === "userArchives";
 
   return (
     <section className="control-panel-content" aria-label="Control panel permission editor">
@@ -279,42 +282,10 @@ export default function ControlPanelSection() {
       </header>
 
       <div className="control-panel-tabs" role="tablist" aria-label="Permission view mode">
-        <button
-          className={`control-panel-tab${showRolePermissions ? " active" : ""}`}
-          type="button"
-          role="tab"
-          aria-selected={showRolePermissions}
-          onClick={() => setActiveTab("role")}
-        >
-          By Role
-        </button>
-        <button
-          className={`control-panel-tab${showIndividualAccess ? " active" : ""}`}
-          type="button"
-          role="tab"
-          aria-selected={showIndividualAccess}
-          onClick={() => setActiveTab("individual")}
-        >
-          Individual Access
-        </button>
-        <button
-          className={`control-panel-tab${showLogs ? " active" : ""}`}
-          type="button"
-          role="tab"
-          aria-selected={showLogs}
-          onClick={() => setActiveTab("logs")}
-        >
-          Logs
-        </button>
-        <button
-          className={`control-panel-tab${showUserArchives ? " active" : ""}`}
-          type="button"
-          role="tab"
-          aria-selected={showUserArchives}
-          onClick={() => setActiveTab("userArchives")}
-        >
-          User Archives
-        </button>
+        <button className={`control-panel-tab${showRolePermissions ? " active" : ""}`} type="button" role="tab" aria-selected={showRolePermissions} onClick={() => setActiveTab("role")}>By Role</button>
+        <button className={`control-panel-tab${showIndividualAccess ? " active" : ""}`} type="button" role="tab" aria-selected={showIndividualAccess} onClick={() => setActiveTab("individual")}>Individual Access</button>
+        <button className={`control-panel-tab${showLogs ? " active" : ""}`} type="button" role="tab" aria-selected={showLogs} onClick={() => setActiveTab("logs")}>Logs</button>
+        <button className={`control-panel-tab${showUserArchives ? " active" : ""}`} type="button" role="tab" aria-selected={showUserArchives} onClick={() => setActiveTab("userArchives")}>User Archives</button>
       </div>
 
       <input
@@ -326,31 +297,21 @@ export default function ControlPanelSection() {
           ? "Search role or permission..."
           : showUserArchives
             ? "Search archived user, email, or position..."
-          : "Search user, role, or permission..."}
+            : showLogs
+              ? "Search logs by user, action, or target..."
+              : "Search user, role, or permission..."}
       />
 
       {showRolePermissions ? (
-        loadingRolePermissions ? (
-          <p className="team-empty-note">Loading role permissions...</p>
-        ) : (
+        loadingRolePermissions ? <p className="team-empty-note">Loading role permissions...</p> : (
           <div className="permission-card-grid">
             {filteredRoles.map(roleItem => (
               <article key={roleItem.id} className="permission-card">
                 <div className="permission-card-header">{roleItem.role}</div>
                 <div className="permission-card-body">
                   <p className="permission-card-label">{roleItem.description}</p>
-                  <ul>
-                    {roleItem.permissions.map(permission => (
-                      <li key={`${roleItem.id}-${permission}`}>{permission}</li>
-                    ))}
-                  </ul>
-                  <button
-                    className="btn permission-edit-btn"
-                    type="button"
-                    onClick={() => setEditingRoleId(roleItem.id)}
-                  >
-                    Edit Permission
-                  </button>
+                  <ul>{roleItem.permissions.map(permission => <li key={`${roleItem.id}-${permission}`}>{permission}</li>)}</ul>
+                  <button className="btn permission-edit-btn" type="button" onClick={() => setEditingRoleId(roleItem.id)}>Edit Permission</button>
                 </div>
               </article>
             ))}
@@ -359,72 +320,49 @@ export default function ControlPanelSection() {
       ) : showIndividualAccess ? (
         <div className="control-panel-table-wrap" role="table" aria-label="Individual permission table">
           <div className="control-panel-table-header" role="row">
-            <span role="columnheader">ID</span>
-            <span role="columnheader">User</span>
-            <span role="columnheader">Role</span>
-            <span role="columnheader">Permissions</span>
-            <span role="columnheader">Action</span>
+            <span role="columnheader">ID</span><span role="columnheader">User</span><span role="columnheader">Role</span><span role="columnheader">Permissions</span><span role="columnheader">Action</span>
           </div>
-
           {filteredUsers.map(userItem => (
             <div key={userItem.id} className="control-panel-table-row" role="row">
-              <span role="cell">{userItem.id}</span>
-              <span role="cell">{userItem.name}</span>
-              <span role="cell">{userItem.role}</span>
-              <span role="cell">{userItem.permissions.length}</span>
-              <span role="cell">
-                <button
-                  className="btn permission-edit-btn"
-                  type="button"
-                  onClick={() => {
-                    setUserSaveError("");
-                    setEditingUserId(userItem.id);
-                  }}
-                >
-                  Edit Permission
-                </button>
-              </span>
+              <span role="cell">{userItem.id}</span><span role="cell">{userItem.name}</span><span role="cell">{userItem.role}</span><span role="cell">{userItem.permissions.length}</span>
+              <span role="cell"><button className="btn permission-edit-btn" type="button" onClick={() => { setUserSaveError(""); setEditingUserId(userItem.id); }}>Edit Permission</button></span>
             </div>
           ))}
         </div>
-        ) : showLogs ? (
-        <p className="team-empty-note">Logs tab is ready for activity history content.</p>
+      ) : showLogs ? (
+        <>
+          {logsError ? <p className="team-empty-note">{logsError}</p> : null}
+          {loadingLogs ? <p className="team-empty-note">Loading logs...</p> : filteredLogs.length === 0 ? <p className="team-empty-note">No logs found.</p> : (
+            <div className="control-panel-table-wrap" role="table" aria-label="Control panel logs table">
+              <div className="control-panel-table-header" role="row">
+                <span role="columnheader">ID</span><span role="columnheader">User</span><span role="columnheader">Action</span><span role="columnheader">Target</span><span role="columnheader">Date</span>
+              </div>
+              {filteredLogs.map(logItem => (
+                <div key={logItem.id} className="control-panel-table-row" role="row">
+                  <span role="cell">{logItem.id}</span><span role="cell">{logItem.user}</span><span role="cell">{logItem.action || "—"}</span><span role="cell">{logItem.target || "—"}</span><span role="cell">{logItem.created_at || "—"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       ) : (
         <>
           {archivedUsersError ? <p className="team-empty-note">{archivedUsersError}</p> : null}
-          {loadingArchivedUsers ? (
-            <p className="team-empty-note">Loading archived users...</p>
-          ) : filteredArchivedUsers.length === 0 ? (
-            <p className="team-empty-note">No archived users found.</p>
-          ) : (
+          {loadingArchivedUsers ? <p className="team-empty-note">Loading archived users...</p> : filteredArchivedUsers.length === 0 ? <p className="team-empty-note">No archived users found.</p> : (
             <div className="control-panel-table-wrap" role="table" aria-label="User archives table">
               <div className="control-panel-table-header" role="row">
-                <span role="columnheader">ID</span>
-                <span role="columnheader">User</span>
-                <span role="columnheader">Position</span>
-                <span role="columnheader">Action</span>
+                <span role="columnheader">ID</span><span role="columnheader">User</span><span role="columnheader">Position</span><span role="columnheader">Action</span>
               </div>
-
               {filteredArchivedUsers.map(userItem => (
                 <div key={userItem.id} className="control-panel-table-row" role="row">
                   <span role="cell">{userItem.id}</span>
                   <span role="cell">{userItem.fullname || userItem.email || `Employee #${userItem.id}`}</span>
                   <span role="cell">{userItem.position || "—"}</span>
                   <span role="cell" className="user-archive-actions">
-                    <button
-                      className="btn secondary"
-                      type="button"
-                      onClick={() => handleArchiveAction(userItem.id, "restore")}
-                      disabled={archiveActionEmployeeId === userItem.id}
-                    >
+                    <button className="btn secondary" type="button" onClick={() => handleArchiveAction(userItem.id, "restore_user", "Restore this archived user?")} disabled={archiveActionEmployeeId === userItem.id}>
                       {archiveActionEmployeeId === userItem.id ? "Updating..." : "Restore"}
                     </button>
-                    <button
-                      className="btn danger"
-                      type="button"
-                      onClick={() => handleArchiveAction(userItem.id, "permanent_delete")}
-                      disabled={archiveActionEmployeeId === userItem.id}
-                    >
+                    <button className="btn danger" type="button" onClick={() => handleArchiveAction(userItem.id, "delete_user_permanently", "Permanently delete this archived user record? This cannot be undone.")} disabled={archiveActionEmployeeId === userItem.id}>
                       Permanently Delete
                     </button>
                   </span>
@@ -448,9 +386,7 @@ export default function ControlPanelSection() {
       {editingUser ? (
         <PermissionEditorModal
           title={`${editingUser.name} (${editingUser.role})`}
-          selectedPermissionIds={editingUser.permissions
-            .map(name => permissionOptions.find(option => option.name === name)?.id)
-            .filter(Boolean)}
+          selectedPermissionIds={editingUser.permissions.map(name => permissionOptions.find(option => option.name === name)?.id).filter(Boolean)}
           permissionOptions={permissionOptions}
           onClose={() => setEditingUserId("")}
           onSave={handleSaveUserPermissions}
