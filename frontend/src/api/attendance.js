@@ -20,6 +20,10 @@ export const toLocalSqlDateTime = date => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
+export const fetchAttendanceHistory = async () => {
+  return await apiFetch("api/employee/employee_attendance_history.php");
+};
+
 export const saveDashboardAttendance = async ({ clusterId, nextAttendance }) => {
   const response = await apiFetch("api/employee/save_attendance.php", {
     method: "POST",
